@@ -269,7 +269,7 @@ export default function Home() {
         setVerificationStep(false);
         setShowForm(true);
       } else {
-        setVerifyError('Verification failed. Please check your Unique ID or registered mobile number.');
+        setVerifyError('Verification failed. Please check your Unique ID and try again.');
       }
     } catch {
       setVerifyError('Verification error. Please try again.');
@@ -609,7 +609,7 @@ export default function Home() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Enter your Unique ID or registered mobile number"
+                    placeholder="Enter your Unique ID"
                     value={verifyInput}
                     onChange={e => setVerifyInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
@@ -630,7 +630,7 @@ export default function Home() {
                 <div className="alert alert-danger mt-3 mb-0 py-2 small">❌ {verifyError}</div>
               )}
               <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.78rem' }}>
-                Enter your <strong>Unique ID</strong> (from your welcome letter) or your <strong>registered mobile number</strong>.
+                Enter your <strong>Unique ID</strong> (from your welcome letter / previous form submission).
               </p>
             </div>
           </div>
