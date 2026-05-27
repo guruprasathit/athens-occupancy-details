@@ -1163,8 +1163,15 @@ export default function Home() {
               <div className="alert alert-danger small mt-2">{genError}</div>
             )}
             {submitSuccess && (
-              <div className="alert alert-success small mt-2">
-                ✅ Form saved successfully! You can download a copy below.
+              <div className="alert alert-success mt-2 py-3 px-4">
+                <div className="fw-bold mb-1" style={{ fontSize: '1rem' }}>
+                  🎉 Thank you for filling in your details!
+                </div>
+                <div className="small">
+                  Your information has been saved successfully. You have taken an important step
+                  towards building a <strong>safe and secure gateway community</strong> at
+                  Casagrand Athens Phase I. You may download a copy of your form below.
+                </div>
               </div>
             )}
             <div className="d-flex justify-content-end gap-3 mt-4 pb-4 flex-wrap">
