@@ -1,7 +1,10 @@
 // Receives a single file (base64) and uploads it to Google Drive via Apps Script.
 // Called once per file as soon as the user selects it.
 
-const SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || '').replace(/^﻿/, '').trim();
+const SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || '')
+  .replace(/^﻿/, '')
+  .replace(/\r\n|\r|\n/g, '')
+  .trim();
 
 export const config = { api: { bodyParser: { sizeLimit: '15mb' } } };
 
