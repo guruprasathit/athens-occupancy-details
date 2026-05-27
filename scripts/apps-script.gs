@@ -4,25 +4,18 @@
 //  Extensions → Apps Script → replace Code.gs → Save → Deploy
 // ═══════════════════════════════════════════════════════════════
 
-// ── GET handler: lookup, getsubmission & setup ───────────────────
+// ── GET handler ──────────────────────────────────────────────────
 
 function doGet(e) {
   const action = (e.parameter.action || '').toLowerCase();
 
-  if (action === 'lookup') {
-    return lookup(e.parameter.unit || '');
-  }
-  if (action === 'getsubmission') {
-    return getSubmission(e.parameter.unit || '');
-  }
-  if (action === 'getallsubmissions') {
-    return getAllSubmissions();
-  }
-  if (action === 'setup') {
-    return json(setupSheets());
-  }
+  if (action === 'lookup')           return lookup(e.parameter.unit || '');
+  if (action === 'getsubmission')    return getSubmission(e.parameter.unit || '');
+  if (action === 'getallsubmissions')return getAllSubmissions();
+  if (action === 'setup')            return json(setupSheets());
+  if (action === 'migrate')          return json(migrateUnitsSheet());
 
-  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103, ?action=getsubmission&unit=E103, ?action=getallsubmissions, or ?action=setup' });
+  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103 | getsubmission | getallsubmissions | setup | migrate' });
 }
 
 // ── POST handler: save submission / batch import ─────────────────
@@ -43,44 +36,66 @@ function doPost(e) {
 }
 
 // ── Lookup unit from the Units sheet ─────────────────────────────
+// Uses header names (not fixed column positions) so it works even if
+// columns were added/reordered before the Unique ID column was added.
 
 function lookup(unitNumber) {
-  const ss   = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Units');
-
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Units');
   if (!sheet) return json({ error: 'Units sheet not found — run ?action=setup first' });
 
-  const rows = sheet.getDataRange().getValues();
-  const key  = unitNumber.replace(/[\s\-]/g, '').toUpperCase();
+  var allRows = sheet.getDataRange().getValues();
+  var headers = allRows[0];
 
-  for (var i = 1; i < rows.length; i++) {
-    var row     = rows[i];
-    var rowUnit = String(row[0]).replace(/[\s\-]/g, '').toUpperCase();
+  // Map each header name -> column index
+  function col(name) {
+    for (var h = 0; h < headers.length; h++) {
+      if (String(headers[h]).trim() === name) return h;
+    }
+    return -1;
+  }
+
+  var iUnit   = col('Unit Number');   if (iUnit  < 0) iUnit  = 0;
+  var iBlock  = col('Block');
+  var iFloor  = col('Floor');
+  var iType   = col('Unit Type');
+  var iPark   = col('Car Park');
+  var iOwner  = col('Owner Name');
+  var iCont   = col('Contact');
+  var iWA     = col('WhatsApp');
+  var iEmail  = col('Email');
+  var iOcc    = col('Occupancy Type');
+  var iUID    = col('Unique ID');     // -1 if column not present yet
+
+  var key = unitNumber.replace(/[\s\-]/g, '').toUpperCase();
+
+  for (var i = 1; i < allRows.length; i++) {
+    var row     = allRows[i];
+    var rowUnit = String(row[iUnit]).replace(/[\s\-]/g, '').toUpperCase();
 
     if (rowUnit === key) {
       return json({
-        unit_number:    String(row[0]  || ''),
-        block:          String(row[1]  || ''),
-        floor:          String(row[2]  || ''),
-        unit_type:      String(row[3]  || ''),
-        car_park:       String(row[4]  || ''),
-        owner_name:     String(row[5]  || ''),
-        contact:        String(row[6]  || ''),
-        whatsapp:       String(row[7]  || ''),
-        email:          String(row[8]  || ''),
-        occupancy_type: String(row[9]  || ''),
-        unique_id:      String(row[10] || ''),
+        unit_number:    String(row[iUnit]            || ''),
+        block:          String(iBlock  >= 0 ? row[iBlock]  : '' || ''),
+        floor:          String(iFloor  >= 0 ? row[iFloor]  : '' || ''),
+        unit_type:      String(iType   >= 0 ? row[iType]   : '' || ''),
+        car_park:       String(iPark   >= 0 ? row[iPark]   : '' || ''),
+        owner_name:     String(iOwner  >= 0 ? row[iOwner]  : '' || ''),
+        contact:        String(iCont   >= 0 ? row[iCont]   : '' || ''),
+        whatsapp:       String(iWA     >= 0 ? row[iWA]     : '' || ''),
+        email:          String(iEmail  >= 0 ? row[iEmail]  : '' || ''),
+        occupancy_type: String(iOcc    >= 0 ? row[iOcc]    : '' || ''),
+        unique_id:      String(iUID    >= 0 ? row[iUID]    : '' || ''),
         found: true
       });
     }
   }
 
-  // Not in sheet — derive block/floor from the unit code itself
-  var m     = key.match(/^([A-Z]+)(\d+)$/);
+  // Not in sheet — derive block/floor from unit code
+  var m      = key.match(/^([A-Z]+)(\d+)$/);
   var block  = m ? m[1] : '';
   var digits = m ? m[2] : '';
   var floor  = digits.length <= 3 ? digits.charAt(0) : digits.slice(0, -2);
-
   return json({ unit_number: key, block: block, floor: floor, found: false });
 }
 
@@ -188,6 +203,58 @@ function saveSubmission(d) {
   return { success: true, action: 'inserted' };
 }
 
+// ── Auto-migrate Units sheet (fix headers + add Unique ID col) ───
+
+function migrateUnitsSheet() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Units');
+  var log   = [];
+
+  if (!sheet) {
+    setupSheets();
+    log.push('Units sheet did not exist — created fresh with all headers.');
+    return { success: true, actions: log };
+  }
+
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, Math.max(lastCol, 1)).getValues()[0];
+
+  // Check if "Unique ID" already exists
+  var uidIdx = -1;
+  for (var h = 0; h < headers.length; h++) {
+    if (String(headers[h]).trim() === 'Unique ID') { uidIdx = h; break; }
+  }
+
+  if (uidIdx >= 0) {
+    log.push('Unique ID column already exists at col ' + (uidIdx + 1) + '. No changes needed.');
+    return { success: true, actions: log };
+  }
+
+  // Find where "Occupancy Type" is so we insert Unique ID right after it
+  var occIdx = -1;
+  for (var h = 0; h < headers.length; h++) {
+    if (String(headers[h]).trim() === 'Occupancy Type') { occIdx = h; break; }
+  }
+
+  var insertAt; // 1-based column number to insert at
+  if (occIdx >= 0) {
+    insertAt = occIdx + 2; // one column after Occupancy Type
+    log.push('Found "Occupancy Type" at col ' + (occIdx + 1) + '. Inserting "Unique ID" at col ' + insertAt + '.');
+  } else {
+    insertAt = lastCol + 1; // append at end
+    log.push('"Occupancy Type" not found. Appending "Unique ID" at col ' + insertAt + '.');
+  }
+
+  // Insert blank column and set header
+  sheet.insertColumnBefore(insertAt);
+  var cell = sheet.getRange(1, insertAt);
+  cell.setValue('Unique ID').setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
+  log.push('Done. Column "Unique ID" added at col ' + insertAt + '.');
+  log.push('Now run: python scripts/import_ids.py  (or use VLOOKUP) to populate the IDs.');
+
+  return { success: true, actions: log };
+}
+
 // ── Batch-import Flat No → Unique ID mapping into Units sheet ────
 
 function batchImport(units) {
@@ -204,17 +271,23 @@ function batchImport(units) {
     sheet.setFrozenRows(1);
   }
 
-  // Ensure "Unique ID" header exists in col K
-  if (sheet.getRange(1, 11).getValue() !== 'Unique ID') {
-    sheet.getRange(1, 11).setValue('Unique ID').setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
-  }
+  // Auto-migrate if "Unique ID" column is missing
+  var migrateResult = migrateUnitsSheet();
 
-  // Build map: normalised unit → row index (1-based, sheet rows)
-  var rows = sheet.getDataRange().getValues();
+  // Find "Unique ID" column index (1-based) dynamically
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var uidCol  = 11; // fallback: col K
+  for (var h = 0; h < headers.length; h++) {
+    if (String(headers[h]).trim() === 'Unique ID') { uidCol = h + 1; break; }
+  }
+  var unitCol = 1; // Unit Number always col A
+
+  // Build map: normalised unit → sheet row number (1-based)
+  var rows   = sheet.getDataRange().getValues();
   var rowMap = {};
   for (var i = 1; i < rows.length; i++) {
     var k = String(rows[i][0]).replace(/[\s\-]/g, '').toUpperCase();
-    if (k) rowMap[k] = i + 1; // sheet row number (1-based)
+    if (k) rowMap[k] = i + 1;
   }
 
   var updated = 0, inserted = 0;
@@ -225,8 +298,8 @@ function batchImport(units) {
     if (!flatNo || !uniqueId) continue;
 
     if (rowMap[flatNo]) {
-      // Update col K of existing row
-      sheet.getRange(rowMap[flatNo], 11).setValue(uniqueId);
+      // Update the Unique ID cell for this unit's row
+      sheet.getRange(rowMap[flatNo], uidCol).setValue(uniqueId);
       updated++;
     } else {
       // Derive block/floor and append new row
@@ -234,7 +307,13 @@ function batchImport(units) {
       var block  = m ? m[1] : '';
       var digits = m ? m[2] : '';
       var floor  = digits.length <= 3 ? digits.charAt(0) : digits.slice(0, -2);
-      sheet.appendRow([flatNo, block, floor, '', '', '', '', '', '', '', uniqueId, '']);
+      var newRow = ['', '', '', '', '', '', '', '', '', '', ''];
+      while (newRow.length < uidCol) newRow.push('');
+      newRow[0]         = flatNo;
+      newRow[1]         = block;
+      newRow[2]         = floor;
+      newRow[uidCol - 1] = uniqueId;
+      sheet.appendRow(newRow);
       inserted++;
     }
   }
