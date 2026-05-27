@@ -53,7 +53,7 @@ function initForm() {
     tenant_docs:    [],  // [{name, url, fileId, status}]
     pet_vacc_docs:  [],  // [{name, url, fileId, status}]
     pets: Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
-    doc_tenant_agreement: false, doc_pet_cert: false,
+    doc_sale_deed: false, doc_tenant_agreement: false, doc_pet_cert: false,
     date: new Date().toLocaleDateString('en-IN'),
   };
 }
@@ -1041,6 +1041,14 @@ export default function Home() {
             {/* 08 — Documents */}
             <SectionCard num="08" title="DOCUMENTS ENCLOSED — CHECKLIST">
               <div className="d-flex flex-wrap gap-4">
+                <div className="form-check">
+                  <input className="form-check-input" type="checkbox" id="doc_sale_deed"
+                    checked={form.doc_sale_deed}
+                    onChange={e => set('doc_sale_deed', e.target.checked)} />
+                  <label className="form-check-label" htmlFor="doc_sale_deed">
+                    Sale Deed Copy — Attached
+                  </label>
+                </div>
                 <div className="form-check">
                   <input className="form-check-input" type="checkbox" id="doc_tenant"
                     checked={form.doc_tenant_agreement}

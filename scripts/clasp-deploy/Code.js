@@ -215,7 +215,10 @@ function saveSubmission(d) {
     d.maintenance_paid_up_to  || '',
     d.sale_deed_urls          || '',
     d.tenant_doc_urls         || '',
-    d.pet_vacc_doc_urls       || ''
+    d.pet_vacc_doc_urls       || '',
+    d.doc_sale_deed           ? 'Yes' : 'No',
+    d.doc_tenant_agreement    ? 'Yes' : 'No',
+    d.doc_pet_cert            ? 'Yes' : 'No'
   ]);
 
   // Upsert: find existing row for this unit and overwrite, otherwise append
@@ -424,7 +427,9 @@ function buildSubmissionHeaders() {
     headers.push('Pet ' + k + ' Name', 'Pet ' + k + ' Breed', 'Pet ' + k + ' Age', 'Pet ' + k + ' Gender',
                  'Pet ' + k + ' Vaccinated', 'Pet ' + k + ' Last Vacc Date', 'Pet ' + k + ' Next Due Date', 'Pet ' + k + ' Cert Status');
   }
-  headers.push('Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs', 'Pet Vaccination URLs');
+  headers.push('Membership Completed', 'Membership ID', 'Maintenance Paid Up To',
+               'Sale Deed URLs', 'Tenant Agreement URLs', 'Pet Vaccination URLs',
+               'Doc: Sale Deed', 'Doc: Tenant Agreement', 'Doc: Pet Certificate');
   return headers;
 }
 
