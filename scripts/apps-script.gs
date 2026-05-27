@@ -4,7 +4,7 @@
 //  Extensions → Apps Script → replace Code.gs → Save → Deploy
 // ═══════════════════════════════════════════════════════════════
 
-// ── GET handler: lookup & setup ──────────────────────────────────
+// ── GET handler: lookup, getsubmission & setup ───────────────────
 
 function doGet(e) {
   const action = (e.parameter.action || '').toLowerCase();
@@ -12,11 +12,14 @@ function doGet(e) {
   if (action === 'lookup') {
     return lookup(e.parameter.unit || '');
   }
+  if (action === 'getsubmission') {
+    return getSubmission(e.parameter.unit || '');
+  }
   if (action === 'setup') {
     return json(setupSheets());
   }
 
-  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103 or ?action=setup' });
+  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103, ?action=getsubmission&unit=E103, or ?action=setup' });
 }
 
 // ── POST handler: save submission ────────────────────────────────
@@ -74,7 +77,34 @@ function lookup(unitNumber) {
   return json({ unit_number: key, block: block, floor: floor, found: false });
 }
 
-// ── Save a form submission to the Submissions sheet ──────────────
+// ── Fetch saved submission for a unit (primary key = unit number) ─
+
+function getSubmission(unitNumber) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Submissions');
+  if (!sheet) return json({ found: false });
+
+  var rows    = sheet.getDataRange().getValues();
+  var headers = rows[0];
+  var key     = String(unitNumber).replace(/[\s\-]/g, '').toUpperCase();
+
+  for (var i = 1; i < rows.length; i++) {
+    var rowUnit = String(rows[i][1]).replace(/[\s\-]/g, '').toUpperCase(); // col B = Unit Number
+    if (rowUnit === key) {
+      var obj = { found: true };
+      for (var c = 0; c < headers.length; c++) {
+        // Convert header "Owner Name" → "owner_name" as the key
+        var fieldKey = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
+        obj[fieldKey] = rows[i][c] !== undefined ? String(rows[i][c]) : '';
+      }
+      return json(obj);
+    }
+  }
+
+  return json({ found: false });
+}
+
+// ── Save/update a submission (upsert: unit number is the primary key) ─
 
 function saveSubmission(d) {
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -83,9 +113,12 @@ function saveSubmission(d) {
   if (!sheet) {
     sheet = ss.insertSheet('Submissions');
     sheet.appendRow(buildSubmissionHeaders());
+    sheet.getRange(1, 1, 1, sheet.getLastColumn()).setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
   }
 
   var now = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd/MM/yyyy HH:mm:ss');
+  var key = String(d.unit_number || '').replace(/[\s\-]/g, '').toUpperCase();
 
   var memberFields = [];
   for (var i = 1; i <= 10; i++) {
@@ -133,8 +166,18 @@ function saveSubmission(d) {
     d.maintenance_paid_up_to  || ''
   ]);
 
+  // Upsert: find existing row for this unit and overwrite, otherwise append
+  var rows = sheet.getDataRange().getValues();
+  for (var r = 1; r < rows.length; r++) {
+    var existingUnit = String(rows[r][1]).replace(/[\s\-]/g, '').toUpperCase();
+    if (existingUnit === key) {
+      sheet.getRange(r + 1, 1, 1, row.length).setValues([row]);
+      return { success: true, action: 'updated', row: r + 1 };
+    }
+  }
+
   sheet.appendRow(row);
-  return { success: true };
+  return { success: true, action: 'inserted' };
 }
 
 // ── Create sheet headers (run once via ?action=setup) ────────────

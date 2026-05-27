@@ -28,6 +28,7 @@ export default function Home() {
   const [form, setForm] = useState(initForm());
   const [showForm, setShowForm] = useState(false);
   const [lookupStatus, setLookupStatus] = useState(null); // null | 'loading' | 'found' | 'not_found' | 'error'
+  const [submissionLoaded, setSubmissionLoaded] = useState(false); // true when existing submission was fetched
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
 
@@ -37,29 +38,90 @@ export default function Home() {
     e.preventDefault();
     if (!unitInput.trim()) return;
     setLookupStatus('loading');
+    setSubmissionLoaded(false);
     setGenError('');
     try {
-      const res = await fetch(`/api/lookup?unit=${encodeURIComponent(unitInput.trim())}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Lookup failed');
+      const unit = unitInput.trim();
 
-      setForm(prev => ({
-        ...initForm(),
-        unit_number: data.unit_number || unitInput.trim().toUpperCase(),
-        block: data.block || '',
-        floor: data.floor || '',
-        unit_type: data.unit_type || '',
-        car_park: data.car_park || '',
-        owner_name: data.owner_name || '',
-        contact: data.contact || '',
-        whatsapp: data.whatsapp || '',
-        email: data.email || '',
-        occupancy_type: data.occupancy_type || '',
-        date: new Date().toLocaleDateString('en-IN'),
-        members: Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
-        vehicles: Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
-        pets: Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
-      }));
+      // Fetch unit master data and any saved submission in parallel
+      const [lookupRes, subRes] = await Promise.all([
+        fetch(`/api/lookup?unit=${encodeURIComponent(unit)}`),
+        fetch(`/api/get-submission?unit=${encodeURIComponent(unit)}`),
+      ]);
+
+      const data = await lookupRes.json();
+      if (!lookupRes.ok) throw new Error(data.error || 'Lookup failed');
+
+      const sub = subRes.ok ? await subRes.json() : { found: false };
+
+      if (sub.found) {
+        // Restore members array from flat keys (member_1_name, member_1_age, ...)
+        const members = Array(10).fill(null).map((_, i) => ({
+          name:     sub[`member_${i + 1}_name`]     || '',
+          age:      sub[`member_${i + 1}_age`]      || '',
+          relation: sub[`member_${i + 1}_relation`] || '',
+        }));
+        // Restore vehicles array
+        const vehicles = Array(5).fill(null).map((_, i) => ({
+          type:   sub[`vehicle_${i + 1}_type`]   || '',
+          make:   sub[`vehicle_${i + 1}_make`]   || '',
+          reg:    sub[`vehicle_${i + 1}_reg`]    || '',
+          colour: sub[`vehicle_${i + 1}_colour`] || '',
+          fuel:   sub[`vehicle_${i + 1}_fuel`]   || '',
+          park:   sub[`vehicle_${i + 1}_park`]   || '',
+        }));
+        setForm({
+          ...initForm(),
+          unit_number:          sub.unit_number          || unit.toUpperCase(),
+          block:                sub.block                || '',
+          floor:                sub.floor                || '',
+          unit_type:            sub.unit_type            || '',
+          car_park:             sub.car_park             || '',
+          occupied_since:       sub.occupied_since       || '',
+          owner_name:           sub.owner_name           || '',
+          contact:              sub.contact              || '',
+          whatsapp:             sub.whatsapp             || '',
+          email:                sub.email                || '',
+          perm_address:         sub.permanent_address    || '',
+          occupancy_type:       sub.occupancy_type       || '',
+          total_occupants:      sub.total_occupants      || '',
+          members,
+          tenant_name:          sub.tenant_name          || '',
+          tenant_contact:       sub.tenant_contact       || '',
+          tenant_email:         sub.tenant_email         || '',
+          agreement_period:     sub.agreement_period     || '',
+          police_verification:  sub.police_verification  || '',
+          agreement_registered: sub.agreement_registered || '',
+          vehicles,
+          has_pets:             sub.has_pets             || '',
+          membership_completed: sub.membership_completed || '',
+          membership_id:        sub.membership_id        || '',
+          maintenance_paid_up_to: sub.maintenance_paid_up_to || '',
+          pets:                 Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
+          date:                 new Date().toLocaleDateString('en-IN'),
+        });
+        setSubmissionLoaded(true);
+      } else {
+        // No saved submission — pre-fill from Units sheet only
+        setForm({
+          ...initForm(),
+          unit_number:    data.unit_number || unit.toUpperCase(),
+          block:          data.block          || '',
+          floor:          data.floor          || '',
+          unit_type:      data.unit_type      || '',
+          car_park:       data.car_park       || '',
+          owner_name:     data.owner_name     || '',
+          contact:        data.contact        || '',
+          whatsapp:       data.whatsapp       || '',
+          email:          data.email          || '',
+          occupancy_type: data.occupancy_type || '',
+          date:           new Date().toLocaleDateString('en-IN'),
+          members:        Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
+          vehicles:       Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
+          pets:           Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
+        });
+      }
+
       setLookupStatus(data.found ? 'found' : 'not_found');
       setShowForm(true);
     } catch (err) {
@@ -208,19 +270,29 @@ export default function Home() {
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
-                  onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setUnitInput(''); }}
+                  onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); }}
                 >
                   Clear
                 </button>
               )}
             </form>
 
-            {lookupStatus === 'found' && (
+            {lookupStatus === 'found' && submissionLoaded && (
               <div className="alert alert-success mt-3 mb-0 py-2 small">
-                ✅ Owner data found for <strong>{form.unit_number}</strong> — fields pre-filled below.
+                ✅ Previously saved details for <strong>{form.unit_number}</strong> loaded — review and update as needed.
               </div>
             )}
-            {lookupStatus === 'not_found' && (
+            {lookupStatus === 'found' && !submissionLoaded && (
+              <div className="alert alert-success mt-3 mb-0 py-2 small">
+                ✅ Owner data found for <strong>{form.unit_number}</strong> — complete the form and save.
+              </div>
+            )}
+            {lookupStatus === 'not_found' && submissionLoaded && (
+              <div className="alert alert-info mt-3 mb-0 py-2 small">
+                ℹ️ Previously saved details for <strong>{form.unit_number}</strong> loaded — unit not in master list.
+              </div>
+            )}
+            {lookupStatus === 'not_found' && !submissionLoaded && (
               <div className="alert alert-warning mt-3 mb-0 py-2 small">
                 ⚠️ Unit <strong>{unitInput.toUpperCase()}</strong> not found in database. Fill in manually.
               </div>
@@ -540,7 +612,7 @@ export default function Home() {
             )}
             <div className="d-flex justify-content-end gap-3 mt-4 pb-4">
               <button type="button" className="btn btn-outline-secondary"
-                onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setUnitInput(''); }}>
+                onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); }}>
                 Cancel
               </button>
               <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating}>
