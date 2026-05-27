@@ -5,6 +5,31 @@ import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const AGE_RANGES = ['', '0-7', '8-14', '15-24', '25-44', '44-59', '60-74', '75+'];
+const RELATIONS  = [
+  '',
+  'Self',
+  'Spouse',
+  'Son',
+  'Daughter',
+  'Father',
+  'Mother',
+  'Father-in-law',
+  'Mother-in-law',
+  'Brother',
+  'Sister',
+  'Son-in-law',
+  'Daughter-in-law',
+  'Grandson',
+  'Granddaughter',
+  'Grandfather',
+  'Grandmother',
+  'Uncle',
+  'Aunt',
+  'Nephew',
+  'Niece',
+  'Domestic Help',
+  'Other',
+];
 const EMPTY_MEMBER = { name: '', age: '', relation: '' };
 const EMPTY_VEHICLE = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
 const EMPTY_PET = { breed: '', age: '', vaccinated: '', vacc_date: '', cert_status: '' };
@@ -487,9 +512,10 @@ export default function Home() {
                           </select>
                         </td>
                         <td>
-                          <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
-                            value={m.relation} onChange={e => setMember(i, 'relation', e.target.value)}
-                            placeholder="Self / Spouse / Child…" />
+                          <select className={`form-select form-select-sm ${styles.tableInput}`}
+                            value={m.relation} onChange={e => setMember(i, 'relation', e.target.value)}>
+                            {RELATIONS.map(r => <option key={r} value={r}>{r || '— select —'}</option>)}
+                          </select>
                         </td>
                       </tr>
                     ))}
