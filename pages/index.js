@@ -187,12 +187,17 @@ export default function Home() {
 
       setLookupStatus(data.found ? 'found' : 'not_found');
 
+      if (!data.found && !sub.found) {
+        // Unit not in database and no prior submission — block completely
+        return;
+      }
+
       if (sub.found) {
         // Existing submission — show identity verification before revealing data
         setPendingData({ data, sub });
         setVerificationStep(true);
       } else {
-        // No saved submission — pre-fill from Units sheet and show form directly
+        // Unit found in database, no prior submission — show blank form
         setForm({
           ...initForm(),
           unit_number:    data.unit_number    || unit.toUpperCase(),
@@ -552,8 +557,9 @@ export default function Home() {
               </div>
             )}
             {lookupStatus === 'not_found' && !submissionLoaded && (
-              <div className="alert alert-warning mt-3 mb-0 py-2 small">
-                ⚠️ Unit <strong>{unitInput.toUpperCase()}</strong> not found in database. Fill in manually.
+              <div className="alert alert-danger mt-3 mb-0 py-2 small">
+                ❌ Unit <strong>{unitInput.toUpperCase()}</strong> is not registered in our database.
+                Please contact the Association office for assistance.
               </div>
             )}
             {lookupStatus === 'error' && (
