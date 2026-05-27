@@ -1170,7 +1170,7 @@ export default function Home() {
                 <div className="small">
                   Your information has been saved successfully. You have taken an important step
                   towards building a <strong>safe and secure gateway community</strong> at
-                  Casagrand Athens Phase I. You may download a copy of your form below.
+                  Casagrand Athens. You may download a copy of your form below.
                 </div>
               </div>
             )}
