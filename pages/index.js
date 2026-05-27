@@ -109,14 +109,16 @@ export default function Home() {
       park:   sub[`vehicle_${i + 1}_park`]   || '',
     }));
     const pets = Array(5).fill(null).map((_, i) => ({
-      name:          sub[`pet_${i + 1}_name`]          || '',
-      breed:         sub[`pet_${i + 1}_breed`]         || '',
-      age:           sub[`pet_${i + 1}_age`]           || '',
-      gender:        sub[`pet_${i + 1}_gender`]        || '',
-      vaccinated:    sub[`pet_${i + 1}_vaccinated`]    || '',
-      vacc_date:     sub[`pet_${i + 1}_vacc_date`]     || '',
-      next_vacc_date:sub[`pet_${i + 1}_next_vacc_date`]|| '',
-      cert_status:   sub[`pet_${i + 1}_cert_status`]   || '',
+      name:          sub[`pet_${i + 1}_name`]           || '',
+      breed:         sub[`pet_${i + 1}_breed`]          || '',
+      age:           sub[`pet_${i + 1}_age`]            || '',
+      gender:        sub[`pet_${i + 1}_gender`]         || '',
+      vaccinated:    sub[`pet_${i + 1}_vaccinated`]     || '',
+      // Sheet header "Pet N Last Vacc Date" → key pet_N_last_vacc_date
+      vacc_date:     sub[`pet_${i + 1}_last_vacc_date`] || '',
+      // Sheet header "Pet N Next Due Date" → key pet_N_next_due_date
+      next_vacc_date:sub[`pet_${i + 1}_next_due_date`]  || '',
+      cert_status:   sub[`pet_${i + 1}_cert_status`]    || '',
     }));
 
     setForm({
@@ -129,13 +131,13 @@ export default function Home() {
       unique_id:              sub.unique_id                 || (data && data.unique_id) || '',
       occupied_since:         sub.occupied_since            || '',
       owner_name:             sub.owner_name                || '',
-      // Sheet header "Primary Contact" → key primary_contact
-      contact:                sub.primary_contact           || '',
-      whatsapp:               sub.primary_whatsapp          || '',
-      email:                  sub.primary_email             || '',
-      contact2:               sub.secondary_contact         || '',
-      whatsapp2:              sub.secondary_whatsapp        || '',
-      email2:                 sub.secondary_email           || '',
+      // Sheet header "Primary Contact" → key primary_contact (fallback: old "Contact" header)
+      contact:                sub.primary_contact           || sub.contact   || '',
+      whatsapp:               sub.primary_whatsapp          || sub.whatsapp  || '',
+      email:                  sub.primary_email             || sub.email     || '',
+      contact2:               sub.secondary_contact         || sub.contact2  || '',
+      whatsapp2:              sub.secondary_whatsapp        || sub.whatsapp2 || '',
+      email2:                 sub.secondary_email           || sub.email2    || '',
       perm_address:           sub.permanent_address         || '',
       occupancy_type:         sub.occupancy_type            || '',
       total_occupants:        sub.total_occupants           || '',
@@ -153,11 +155,16 @@ export default function Home() {
       maintenance_paid_up_to: sub.maintenance_paid_up_to    || '',
       // Sheet header "Sale Deed URLs" → sale_deed_urls ✓
       sale_deeds:     urlList('sale_deed_urls'),
-      // Sheet header "Tenant Agreement URLs" → tenant_agreement_urls (was tenant_doc_urls — fixed)
+      // Sheet header "Tenant Agreement URLs" → tenant_agreement_urls ✓
       tenant_docs:    urlList('tenant_agreement_urls'),
-      // Sheet header "Pet Vaccination URLs" → pet_vaccination_urls (was pet_vacc_doc_urls — fixed)
+      // Sheet header "Pet Vaccination URLs" → pet_vaccination_urls ✓
       pet_vacc_docs:  urlList('pet_vaccination_urls'),
       pets,
+      // Sheet headers "Doc: Sale Deed" / "Doc: Tenant Agreement" / "Doc: Pet Certificate"
+      // Apps Script lowercases + replaces spaces → keys: "doc:_sale_deed" etc.
+      doc_sale_deed:        (sub['doc:_sale_deed']        || '').toLowerCase() === 'yes',
+      doc_tenant_agreement: (sub['doc:_tenant_agreement'] || '').toLowerCase() === 'yes',
+      doc_pet_cert:         (sub['doc:_pet_certificate']  || '').toLowerCase() === 'yes',
       date: new Date().toLocaleDateString('en-IN'),
     });
     setSubmissionLoaded(true);
