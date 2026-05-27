@@ -47,8 +47,9 @@ function initForm() {
     agreement_period: '', police_verification: '', agreement_registered: '',
     vehicles: Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
     has_pets: '', membership_completed: '', membership_id: '', maintenance_paid_up_to: '',
-    sale_deeds:  [],  // [{name, url, fileId, status}]
-    tenant_docs: [],  // [{name, url, fileId, status}]
+    sale_deeds:     [],  // [{name, url, fileId, status}]
+    tenant_docs:    [],  // [{name, url, fileId, status}]
+    pet_vacc_docs:  [],  // [{name, url, fileId, status}]
     pets: Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
     doc_tenant_agreement: false, doc_pet_cert: false,
     date: new Date().toLocaleDateString('en-IN'),
@@ -145,6 +146,9 @@ export default function Home() {
             : [],
           tenant_docs:          sub.tenant_doc_urls
             ? String(sub.tenant_doc_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
+            : [],
+          pet_vacc_docs:        sub.pet_vacc_doc_urls
+            ? String(sub.pet_vacc_doc_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
             : [],
           pets:                 Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
           date:                 new Date().toLocaleDateString('en-IN'),
@@ -303,14 +307,23 @@ export default function Home() {
     }
   };
 
-  const handleTenantFiles = makeFileHandler('tenant_docs', 'tenant_agreement');
-  const handleDeedFiles   = makeFileHandler('sale_deeds',  'sale_deed');
+  const handleTenantFiles   = makeFileHandler('tenant_docs',   'tenant_agreement');
+  const handleDeedFiles     = makeFileHandler('sale_deeds',    'sale_deed');
+  const handlePetVaccFiles  = makeFileHandler('pet_vacc_docs', 'pet_vaccination');
 
   const removeTenantDoc = (idx) => {
     setForm(prev => {
       const updated = [...(prev.tenant_docs || [])];
       updated.splice(idx, 1);
       return { ...prev, tenant_docs: updated };
+    });
+  };
+
+  const removePetVaccDoc = (idx) => {
+    setForm(prev => {
+      const updated = [...(prev.pet_vacc_docs || [])];
+      updated.splice(idx, 1);
+      return { ...prev, pet_vacc_docs: updated };
     });
   };
 
@@ -348,8 +361,12 @@ export default function Home() {
     payload.tenant_doc_urls = (form.tenant_docs || [])
       .filter(f => f.status === 'done' || f.status === 'saved')
       .map(f => f.url).join(', ');
+    payload.pet_vacc_doc_urls = (form.pet_vacc_docs || [])
+      .filter(f => f.status === 'done' || f.status === 'saved')
+      .map(f => f.url).join(', ');
     delete payload.sale_deeds;
     delete payload.tenant_docs;
+    delete payload.pet_vacc_docs;
     return payload;
   };
 
@@ -809,33 +826,89 @@ export default function Home() {
                 </div>
               </div>
               {form.has_pets === 'yes' && (
-                <div className="table-responsive">
-                  <table className="table table-sm mb-0">
-                    <thead>
-                      <tr className={styles.membersThead}>
-                        <th>#</th>
-                        <th>Type / Breed</th>
-                        <th>Age</th>
-                        <th>Vaccinated?</th>
-                        <th>Last Vacc. Date</th>
-                        <th>Certificate Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {form.pets.map((p, i) => (
-                        <tr key={i} className={styles.memberRow}>
-                          <td className="text-muted small align-middle">{i + 1}</td>
-                          {['breed', 'age', 'vaccinated', 'vacc_date', 'cert_status'].map(f => (
-                            <td key={f}>
-                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
-                                value={p[f]} onChange={e => setPet(i, f, e.target.value)} />
-                            </td>
-                          ))}
+                <>
+                  <div className="table-responsive">
+                    <table className="table table-sm mb-0">
+                      <thead>
+                        <tr className={styles.membersThead}>
+                          <th>#</th>
+                          <th>Type / Breed</th>
+                          <th>Age</th>
+                          <th>Vaccinated?</th>
+                          <th>Last Vacc. Date</th>
+                          <th>Certificate Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {form.pets.map((p, i) => (
+                          <tr key={i} className={styles.memberRow}>
+                            <td className="text-muted small align-middle">{i + 1}</td>
+                            {['breed', 'age', 'vaccinated', 'vacc_date', 'cert_status'].map(f => (
+                              <td key={f}>
+                                <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                  value={p[f]} onChange={e => setPet(i, f, e.target.value)} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pet Vaccination Certificate Upload */}
+                  <div className="mt-3">
+                    <label className={styles.fieldLabel}>
+                      Vaccination Certificate Upload &nbsp;
+                      <span style={{ fontWeight: 400, color: '#6c757d', fontSize: '0.78rem' }}>
+                        Please upload vaccination certificate copy
+                      </span>
+                    </label>
+                    <div className="mt-2 p-3 rounded"
+                      style={{ border: '1.5px dashed #b8c9e0', background: '#f8fafd' }}>
+
+                      {(form.pet_vacc_docs || []).length > 0 && (
+                        <ul className="list-unstyled mb-2">
+                          {form.pet_vacc_docs.map((f, idx) => (
+                            <li key={idx} className="d-flex align-items-center gap-2 mb-1 small">
+                              {f.status === 'uploading' && (
+                                <span className="spinner-border spinner-border-sm text-primary" />
+                              )}
+                              {f.status === 'done'  && <span style={{ color: '#198754' }}>✔</span>}
+                              {f.status === 'saved' && <span style={{ color: '#1B3A6B' }}>🔗</span>}
+                              {f.status === 'error' && <span style={{ color: '#dc3545' }}>✖</span>}
+
+                              {f.url
+                                ? <a href={f.url} target="_blank" rel="noopener noreferrer"
+                                    className="text-truncate" style={{ maxWidth: 300 }}>{f.name}</a>
+                                : <span className="text-muted text-truncate" style={{ maxWidth: 300 }}>{f.name}</span>}
+                              {f.status === 'error' && (
+                                <span className="text-danger" style={{ fontSize: '0.72rem' }}>({f.error})</span>
+                              )}
+                              <button type="button" className="btn btn-sm btn-link text-danger p-0 ms-auto"
+                                onClick={() => removePetVaccDoc(idx)} style={{ fontSize: '0.78rem' }}
+                                disabled={f.status === 'uploading'}>
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {(form.pet_vacc_docs || []).length < 5 && (
+                        <label className="btn btn-sm btn-outline-primary mb-0" style={{ cursor: 'pointer' }}>
+                          + Add File
+                          <input type="file" hidden multiple
+                            accept=".pdf,image/*"
+                            onChange={handlePetVaccFiles} />
+                        </label>
+                      )}
+
+                      <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
+                        Up to 5 files · PDF or image · Max 10 MB per file
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
             </SectionCard>
 

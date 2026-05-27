@@ -201,7 +201,8 @@ function saveSubmission(d) {
     d.membership_id           || '',
     d.maintenance_paid_up_to  || '',
     d.sale_deed_urls          || '',
-    d.tenant_doc_urls         || ''
+    d.tenant_doc_urls         || '',
+    d.pet_vacc_doc_urls       || ''
   ]);
 
   // Upsert: find existing row for this unit and overwrite, otherwise append
@@ -405,7 +406,7 @@ function buildSubmissionHeaders() {
     headers.push('Vehicle ' + j + ' Type', 'Vehicle ' + j + ' Make', 'Vehicle ' + j + ' Reg',
                  'Vehicle ' + j + ' Colour', 'Vehicle ' + j + ' Fuel', 'Vehicle ' + j + ' Park');
   }
-  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs');
+  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs', 'Pet Vaccination URLs');
   return headers;
 }
 
@@ -429,6 +430,7 @@ function uploadFileToDrive(data) {
   var typeMap    = {
     'sale_deed':         'Athens Occupancy - Sale Deeds',
     'tenant_agreement':  'Athens Occupancy - Tenant Agreements',
+    'pet_vaccination':   'Athens Occupancy - Pet Vaccination Certificates',
   };
   var folderName = typeMap[data.docType] || 'Athens Occupancy - Documents';
   var root       = DriveApp.getRootFolder();
