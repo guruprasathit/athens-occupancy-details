@@ -1,4 +1,5 @@
 import { getAllSubmissions } from '../../../lib/googleSheets';
+import { decryptFields, SENSITIVE_FIELDS } from '../../../lib/crypto';
 
 function isAuthorised(req) {
   const auth  = (req.headers.authorization || '').replace('Bearer ', '');
@@ -12,7 +13,12 @@ export default async function handler(req, res) {
 
   try {
     const data = await getAllSubmissions();
-    res.json(data);
+    // Decrypt PII fields for admin display
+    const decrypted = {
+      ...data,
+      submissions: (data.submissions || []).map(s => decryptFields(s, SENSITIVE_FIELDS)),
+    };
+    res.json(decrypted);
   } catch (err) {
     console.error('Admin submissions error:', err);
     res.status(500).json({ error: 'Failed to load submissions' });

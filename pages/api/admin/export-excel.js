@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { getAllSubmissions } from '../../../lib/googleSheets';
+import { decryptFields, SENSITIVE_FIELDS } from '../../../lib/crypto';
 
 function isAuthorised(req) {
   const auth  = (req.headers.authorization || '').replace('Bearer ', '');
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
 
   try {
     const data = await getAllSubmissions();
-    const submissions = data.submissions || [];
+    const submissions = (data.submissions || []).map(s => decryptFields(s, SENSITIVE_FIELDS));
 
     // Header row
     const header = COLUMNS.map(c => c.label);
