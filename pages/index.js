@@ -202,7 +202,7 @@ export default function Home() {
     }
   };
 
-  // ── Submit & Download Excel ─────────────────────────────────────────────────
+  // ── Build flat payload ───────────────────────────────────────────────────────
 
   const buildPayload = () => {
     const payload = { ...form };
@@ -232,28 +232,21 @@ export default function Home() {
     return payload;
   };
 
-  const handleSubmitExcel = async (e) => {
+  // ── Submit (save to Google Sheets only) ────────────────────────────────────
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setSubmitSuccess(false);
     setGenError('');
     try {
-      const res = await fetch('/api/submit-excel', {
+      const res  = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload()),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error);
-      }
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Submit failed');
       setSubmitSuccess(true);
     } catch (err) {
       setGenError('Submit failed: ' + err.message);
@@ -702,11 +695,11 @@ export default function Home() {
                 type="button"
                 className="btn btn-success px-4"
                 disabled={submitting || generating}
-                onClick={handleSubmitExcel}
+                onClick={handleSubmit}
               >
                 {submitting ? (
                   <><span className="spinner-border spinner-border-sm me-2" />Submitting…</>
-                ) : '✔ Submit & Download (.xlsx)'}
+                ) : '✔ Submit'}
               </button>
               <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating || submitting}>
                 {generating ? (
