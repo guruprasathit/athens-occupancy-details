@@ -58,37 +58,48 @@ def post_to_script(units):
         print('ERROR: requests not installed. Run: pip install requests')
         return None
 
-    print(f'Uploading {len(units)} units to Apps Script ...')
-    payload = json.dumps({'action': 'batchimport', 'units': units})
-    try:
-        res = requests.post(
-            SCRIPT_URL,
-            headers={'Content-Type': 'text/plain'},
-            data=payload,
-            allow_redirects=True,
-            timeout=90,
-        )
-    except Exception as e:
-        print(f'  Network error: {e}')
-        return None
+    BATCH_SIZE = 50
+    total_updated  = 0
+    total_inserted = 0
+    batches = [units[i:i+BATCH_SIZE] for i in range(0, len(units), BATCH_SIZE)]
+    print(f'Uploading {len(units)} units in {len(batches)} batches of {BATCH_SIZE} ...')
 
-    if res.status_code != 200:
-        print(f'  HTTP {res.status_code}: {res.text[:300]}')
-        if 'ServiceLogin' in res.text or 'accounts.google.com' in res.text:
-            print()
-            print('  *** The Apps Script URL requires Google login. ***')
-            print('  Fix: In Apps Script -> Deploy -> Manage deployments -> edit ->')
-            print('       change "Who has access" to "Anyone" (not "Anyone at caaoa.in")')
-            print('  Then run this script again.')
-        return None
+    for idx, batch in enumerate(batches, 1):
+        print(f'  Batch {idx}/{len(batches)} ({len(batch)} units) ...', end=' ', flush=True)
+        payload = json.dumps({'action': 'batchimport', 'units': batch})
+        try:
+            res = requests.post(
+                SCRIPT_URL,
+                headers={'Content-Type': 'text/plain'},
+                data=payload,
+                allow_redirects=True,
+                timeout=120,
+            )
+        except Exception as e:
+            print(f'NETWORK ERROR: {e}')
+            return None
 
-    try:
-        data = res.json()
-    except Exception:
-        print(f'  Non-JSON response: {res.text[:300]}')
-        return None
+        if res.status_code != 200:
+            print(f'HTTP {res.status_code}: {res.text[:200]}')
+            if 'ServiceLogin' in res.text or 'accounts.google.com' in res.text:
+                print('\n  *** The Apps Script URL requires Google login. ***')
+            return None
 
-    return data
+        try:
+            data = res.json()
+        except Exception:
+            print(f'Non-JSON: {res.text[:200]}')
+            return None
+
+        if not data.get('success'):
+            print(f'Script error: {data.get("error", "unknown")}')
+            return None
+
+        total_updated  += data.get('updated',  0)
+        total_inserted += data.get('inserted', 0)
+        print(f'OK (updated={data.get("updated",0)}, inserted={data.get("inserted",0)})')
+
+    return {'success': True, 'updated': total_updated, 'inserted': total_inserted}
 
 def write_csv(units):
     with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as f:

@@ -5,3 +5,5 @@ node_modules/
 *.json.key
 service-account-key.json
 scripts/units_ids.csv
+
+.vercel
