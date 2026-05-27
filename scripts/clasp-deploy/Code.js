@@ -19,10 +19,11 @@ function doGet(e) {
   if (action === 'lookup')           return lookup(e.parameter.unit || '');
   if (action === 'getsubmission')    return getSubmission(e.parameter.unit || '');
   if (action === 'getallsubmissions')return getAllSubmissions();
-  if (action === 'setup')            return json(setupSheets());
-  if (action === 'migrate')          return json(migrateUnitsSheet());
+  if (action === 'setup')              return json(setupSheets());
+  if (action === 'migrate')            return json(migrateUnitsSheet());
+  if (action === 'migratesubmissions') return json(migrateSubmissionsSheet());
 
-  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103 | getsubmission | getallsubmissions | setup | migrate' });
+  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103 | getsubmission | getallsubmissions | setup | migrate | migratesubmissions' });
 }
 
 // ── POST handler: save submission / batch import ─────────────────
@@ -492,6 +493,71 @@ function uploadFileToDrive(data) {
     url:      'https://drive.google.com/file/d/' + file.getId() + '/view',
     name:     file.getName(),
     size:     file.getSize()
+  };
+}
+
+// ── Migrate Submissions sheet to latest column structure ─────────
+// Run once via: ?action=migratesubmissions
+// Safe: reads by old header names, writes to new positions. No data loss.
+// Old rows get blank values for new columns (pet fields, doc checkboxes, etc.)
+// After running, all new submissions will save/read correctly.
+
+function migrateSubmissionsSheet() {
+  var ss    = getSS();
+  var sheet = ss.getSheetByName('Submissions');
+  if (!sheet) return { success: false, message: 'Submissions sheet not found — run ?action=setup first' };
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 1) return { success: true, message: 'Sheet is empty — nothing to migrate', rows: 0 };
+
+  var newHeaders = buildSubmissionHeaders();
+  var allData    = sheet.getDataRange().getValues();
+  var oldHeaders = allData[0].map(function(h) { return h ? h.toString() : ''; });
+
+  // Check if headers already match
+  var alreadyUpToDate = true;
+  for (var x = 0; x < newHeaders.length; x++) {
+    if (oldHeaders[x] !== newHeaders[x]) { alreadyUpToDate = false; break; }
+  }
+  if (alreadyUpToDate && oldHeaders.length === newHeaders.length) {
+    return { success: true, message: 'Headers already up to date — no migration needed', rows: lastRow - 1 };
+  }
+
+  // Build index: old header name → column position (0-based)
+  var oldIdx = {};
+  oldHeaders.forEach(function(h, i) { if (h) oldIdx[h] = i; });
+
+  // Build new data array: header row + remapped data rows
+  var newData = [newHeaders];
+  for (var r = 1; r < allData.length; r++) {
+    var oldRow = allData[r];
+    var newRow = new Array(newHeaders.length).fill('');
+    for (var c = 0; c < newHeaders.length; c++) {
+      var h = newHeaders[c];
+      if (oldIdx[h] !== undefined) {
+        newRow[c] = oldRow[oldIdx[h]] !== undefined ? oldRow[oldIdx[h]] : '';
+      }
+    }
+    newData.push(newRow);
+  }
+
+  // Clear and rewrite the sheet
+  sheet.clearContents();
+  var range = sheet.getRange(1, 1, newData.length, newHeaders.length);
+  range.setValues(newData);
+  // Reapply header formatting
+  sheet.getRange(1, 1, 1, newHeaders.length)
+       .setFontWeight('bold')
+       .setBackground('#1B3A6B')
+       .setFontColor('#FFFFFF');
+  sheet.setFrozenRows(1);
+
+  return {
+    success:  true,
+    message:  'Migration complete',
+    rows:     newData.length - 1,
+    oldCols:  oldHeaders.length,
+    newCols:  newHeaders.length
   };
 }
 

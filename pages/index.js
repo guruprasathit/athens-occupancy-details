@@ -121,50 +121,64 @@ export default function Home() {
       cert_status:   sub[`pet_${i + 1}_cert_status`]    || '',
     }));
 
+    // Helper: normalise Yes/No/yes/no stored values to lowercase for radio buttons
+    const lc = v => String(v || '').toLowerCase();
+
+    // Helper: try multiple URL key names, return first non-empty list
+    const urlListAny = (...keys) => {
+      for (const k of keys) {
+        const r = urlList(k);
+        if (r.length) return r;
+      }
+      return [];
+    };
+
     setForm({
       ...initForm(),
-      unit_number:            sub.unit_number               || (unit || '').toUpperCase(),
-      block:                  sub.block                     || '',
-      floor:                  sub.floor                     || '',
-      unit_type:              sub.unit_type                 || '',
-      car_park:               sub.car_park                  || '',
-      unique_id:              sub.unique_id                 || (data && data.unique_id) || '',
-      occupied_since:         sub.occupied_since            || '',
-      owner_name:             sub.owner_name                || '',
+      unit_number:            sub.unit_number                              || (unit || '').toUpperCase(),
+      block:                  sub.block                                    || '',
+      floor:                  sub.floor                                    || '',
+      unit_type:              sub.unit_type                                || '',
+      car_park:               sub.car_park                                 || '',
+      unique_id:              sub.unique_id                                || (data && data.unique_id) || '',
+      occupied_since:         sub.occupied_since                           || '',
+      owner_name:             sub.owner_name                               || '',
       // Sheet header "Primary Contact" → key primary_contact (fallback: old "Contact" header)
-      contact:                sub.primary_contact           || sub.contact   || '',
-      whatsapp:               sub.primary_whatsapp          || sub.whatsapp  || '',
-      email:                  sub.primary_email             || sub.email     || '',
-      contact2:               sub.secondary_contact         || sub.contact2  || '',
-      whatsapp2:              sub.secondary_whatsapp        || sub.whatsapp2 || '',
-      email2:                 sub.secondary_email           || sub.email2    || '',
-      perm_address:           sub.permanent_address         || '',
-      occupancy_type:         sub.occupancy_type            || '',
-      total_occupants:        sub.total_occupants           || '',
+      contact:                sub.primary_contact  || sub.contact          || '',
+      whatsapp:               sub.primary_whatsapp || sub.whatsapp         || '',
+      email:                  sub.primary_email    || sub.email            || '',
+      contact2:               sub.secondary_contact  || sub.contact2       || '',
+      whatsapp2:              sub.secondary_whatsapp || sub.whatsapp2      || '',
+      email2:                 sub.secondary_email    || sub.email2         || '',
+      // "Permanent Address" → permanent_address; fallback if old sheet used perm_address
+      perm_address:           sub.permanent_address || sub.perm_address    || '',
+      // occupancy_type stored as lowercase ('owner','tenant','vacant') — keep as-is
+      occupancy_type:         sub.occupancy_type                           || '',
+      total_occupants:        sub.total_occupants                          || '',
       members,
-      tenant_name:            sub.tenant_name               || '',
-      tenant_contact:         sub.tenant_contact            || '',
-      tenant_email:           sub.tenant_email              || '',
-      agreement_period:       sub.agreement_period          || '',
-      police_verification:    sub.police_verification       || '',
-      agreement_registered:   sub.agreement_registered      || '',
+      tenant_name:            sub.tenant_name                              || '',
+      tenant_contact:         sub.tenant_contact                           || '',
+      tenant_email:           sub.tenant_email                             || '',
+      agreement_period:       sub.agreement_period                         || '',
+      // Radio buttons saved as lowercase; normalise in case old data used 'Yes'/'No'
+      police_verification:    lc(sub.police_verification),
+      agreement_registered:   lc(sub.agreement_registered),
       vehicles,
-      has_pets:               sub.has_pets                  || '',
-      membership_completed:   sub.membership_completed      || '',
-      membership_id:          sub.membership_id             || '',
-      maintenance_paid_up_to: sub.maintenance_paid_up_to    || '',
-      // Sheet header "Sale Deed URLs" → sale_deed_urls ✓
-      sale_deeds:     urlList('sale_deed_urls'),
-      // Sheet header "Tenant Agreement URLs" → tenant_agreement_urls ✓
-      tenant_docs:    urlList('tenant_agreement_urls'),
-      // Sheet header "Pet Vaccination URLs" → pet_vaccination_urls ✓
-      pet_vacc_docs:  urlList('pet_vaccination_urls'),
+      // Radio saved as 'yes'/'no' — normalise for same reason
+      has_pets:               lc(sub.has_pets),
+      membership_completed:   lc(sub.membership_completed),
+      membership_id:          sub.membership_id                            || '',
+      maintenance_paid_up_to: sub.maintenance_paid_up_to                  || '',
+      // URLs: try new key first, fall back to older key variants
+      sale_deeds:    urlListAny('sale_deed_urls',         'sale_deed_doc_urls'),
+      tenant_docs:   urlListAny('tenant_agreement_urls',  'tenant_doc_urls'),
+      pet_vacc_docs: urlListAny('pet_vaccination_urls',   'pet_vacc_doc_urls'),
       pets,
       // Sheet headers "Doc: Sale Deed" / "Doc: Tenant Agreement" / "Doc: Pet Certificate"
-      // Apps Script lowercases + replaces spaces → keys: "doc:_sale_deed" etc.
-      doc_sale_deed:        (sub['doc:_sale_deed']        || '').toLowerCase() === 'yes',
-      doc_tenant_agreement: (sub['doc:_tenant_agreement'] || '').toLowerCase() === 'yes',
-      doc_pet_cert:         (sub['doc:_pet_certificate']  || '').toLowerCase() === 'yes',
+      // Apps Script: .toLowerCase().replace(/\s+/g,'_') → colon kept → "doc:_sale_deed"
+      doc_sale_deed:        lc(sub['doc:_sale_deed'])        === 'yes',
+      doc_tenant_agreement: lc(sub['doc:_tenant_agreement']) === 'yes',
+      doc_pet_cert:         lc(sub['doc:_pet_certificate'])  === 'yes',
       date: new Date().toLocaleDateString('en-IN'),
     });
     setSubmissionLoaded(true);
