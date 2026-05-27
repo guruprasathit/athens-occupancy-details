@@ -11,7 +11,7 @@ export const config = { api: { bodyParser: { sizeLimit: '15mb' } } };
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { filename, mimeType, base64, unitNumber } = req.body;
+  const { filename, mimeType, base64, unitNumber, docType } = req.body;
 
   if (!filename || !mimeType || !base64) {
     return res.status(400).json({ error: 'filename, mimeType and base64 are required' });
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       method:   'POST',
       redirect: 'follow',
       headers:  { 'Content-Type': 'text/plain' },
-      body:     JSON.stringify({ action: 'uploadfile', filename, mimeType, base64, unitNumber }),
+      body:     JSON.stringify({ action: 'uploadfile', filename, mimeType, base64, unitNumber, docType: docType || 'sale_deed' }),
     });
 
     if (!response.ok) {

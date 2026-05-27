@@ -200,7 +200,8 @@ function saveSubmission(d) {
     d.membership_completed    || '',
     d.membership_id           || '',
     d.maintenance_paid_up_to  || '',
-    d.sale_deed_urls          || ''
+    d.sale_deed_urls          || '',
+    d.tenant_doc_urls         || ''
   ]);
 
   // Upsert: find existing row for this unit and overwrite, otherwise append
@@ -404,7 +405,7 @@ function buildSubmissionHeaders() {
     headers.push('Vehicle ' + j + ' Type', 'Vehicle ' + j + ' Make', 'Vehicle ' + j + ' Reg',
                  'Vehicle ' + j + ' Colour', 'Vehicle ' + j + ' Fuel', 'Vehicle ' + j + ' Park');
   }
-  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs');
+  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs');
   return headers;
 }
 
@@ -425,7 +426,11 @@ function authoriseDriveAccess() {
 // Called via doPost {action:'uploadfile', filename, mimeType, base64, unitNumber}
 
 function uploadFileToDrive(data) {
-  var folderName = 'Athens Occupancy - Sale Deeds';
+  var typeMap    = {
+    'sale_deed':         'Athens Occupancy - Sale Deeds',
+    'tenant_agreement':  'Athens Occupancy - Tenant Agreements',
+  };
+  var folderName = typeMap[data.docType] || 'Athens Occupancy - Documents';
   var root       = DriveApp.getRootFolder();
   var folders    = root.getFoldersByName(folderName);
   var folder     = folders.hasNext() ? folders.next() : root.createFolder(folderName);

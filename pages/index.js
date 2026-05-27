@@ -47,7 +47,8 @@ function initForm() {
     agreement_period: '', police_verification: '', agreement_registered: '',
     vehicles: Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
     has_pets: '', membership_completed: '', membership_id: '', maintenance_paid_up_to: '',
-    sale_deeds: [],   // [{name, url, fileId, status}]
+    sale_deeds:  [],  // [{name, url, fileId, status}]
+    tenant_docs: [],  // [{name, url, fileId, status}]
     pets: Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
     doc_tenant_agreement: false, doc_pet_cert: false,
     date: new Date().toLocaleDateString('en-IN'),
@@ -141,6 +142,9 @@ export default function Home() {
           maintenance_paid_up_to: sub.maintenance_paid_up_to || '',
           sale_deeds:           sub.sale_deed_urls
             ? String(sub.sale_deed_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
+            : [],
+          tenant_docs:          sub.tenant_doc_urls
+            ? String(sub.tenant_doc_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
             : [],
           pets:                 Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
           date:                 new Date().toLocaleDateString('en-IN'),
@@ -240,71 +244,73 @@ export default function Home() {
     }
   };
 
-  // ── Sale deed file upload ────────────────────────────────────────────────────
+  // ── File upload handler factory (used for sale deeds & tenant agreements) ───
+  // NOTE: makeFileHandler is defined later after handleTenantFiles section
 
-  const handleDeedFiles = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    const existing = form.sale_deeds || [];
-    const totalAfter = existing.length + files.length;
-    if (totalAfter > 5) {
-      alert('You can upload up to 5 files total.');
-      e.target.value = '';
-      return;
-    }
-
-    // Add pending placeholders immediately
-    const pending = files.map(f => ({ name: f.name, status: 'uploading', url: '', fileId: '' }));
-    setForm(prev => ({ ...prev, sale_deeds: [...(prev.sale_deeds || []), ...pending] }));
-    e.target.value = '';
-
-    // Upload each file
-    for (let idx = 0; idx < files.length; idx++) {
-      const file = files[idx];
-      const slotIdx = existing.length + idx;
-
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload  = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const res  = await fetch('/api/upload-deed', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            filename:   file.name,
-            mimeType:   file.type || 'application/octet-stream',
-            base64,
-            unitNumber: form.unit_number || 'Unknown',
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
-
-        setForm(prev => {
-          const updated = [...(prev.sale_deeds || [])];
-          updated[slotIdx] = { name: file.name, url: data.url, fileId: data.fileId, status: 'done' };
-          return { ...prev, sale_deeds: updated };
-        });
-      } catch (err) {
-        setForm(prev => {
-          const updated = [...(prev.sale_deeds || [])];
-          updated[slotIdx] = { name: file.name, url: '', fileId: '', status: 'error', error: err.message };
-          return { ...prev, sale_deeds: updated };
-        });
-      }
-    }
-  };
+  // Sale deed handler — defined after makeFileHandler below
 
   const removeDeed = (idx) => {
     setForm(prev => {
       const updated = [...(prev.sale_deeds || [])];
       updated.splice(idx, 1);
       return { ...prev, sale_deeds: updated };
+    });
+  };
+
+  // ── Tenant agreement upload (reuses same API, different docType / stateKey) ──
+
+  const makeFileHandler = (stateKey, docType) => async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const existing = form[stateKey] || [];
+    if (existing.length + files.length > 5) {
+      alert('You can upload up to 5 files total.');
+      e.target.value = '';
+      return;
+    }
+    const pending = files.map(f => ({ name: f.name, status: 'uploading', url: '', fileId: '' }));
+    setForm(prev => ({ ...prev, [stateKey]: [...(prev[stateKey] || []), ...pending] }));
+    e.target.value = '';
+    for (let idx = 0; idx < files.length; idx++) {
+      const file     = files[idx];
+      const slotIdx  = existing.length + idx;
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res  = await fetch('/api/upload-deed', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ filename: file.name, mimeType: file.type || 'application/octet-stream', base64, unitNumber: form.unit_number || 'Unknown', docType }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
+        setForm(prev => {
+          const updated = [...(prev[stateKey] || [])];
+          updated[slotIdx] = { name: file.name, url: data.url, fileId: data.fileId, status: 'done' };
+          return { ...prev, [stateKey]: updated };
+        });
+      } catch (err) {
+        setForm(prev => {
+          const updated = [...(prev[stateKey] || [])];
+          updated[slotIdx] = { name: file.name, url: '', fileId: '', status: 'error', error: err.message };
+          return { ...prev, [stateKey]: updated };
+        });
+      }
+    }
+  };
+
+  const handleTenantFiles = makeFileHandler('tenant_docs', 'tenant_agreement');
+  const handleDeedFiles   = makeFileHandler('sale_deeds',  'sale_deed');
+
+  const removeTenantDoc = (idx) => {
+    setForm(prev => {
+      const updated = [...(prev.tenant_docs || [])];
+      updated.splice(idx, 1);
+      return { ...prev, tenant_docs: updated };
     });
   };
 
@@ -335,12 +341,15 @@ export default function Home() {
     delete payload.members;
     delete payload.vehicles;
     delete payload.pets;
-    // Flatten sale deed URLs to comma-separated string
+    // Flatten file URLs to comma-separated strings
     payload.sale_deed_urls = (form.sale_deeds || [])
       .filter(f => f.status === 'done' || f.status === 'saved')
-      .map(f => f.url)
-      .join(', ');
+      .map(f => f.url).join(', ');
+    payload.tenant_doc_urls = (form.tenant_docs || [])
+      .filter(f => f.status === 'done' || f.status === 'saved')
+      .map(f => f.url).join(', ');
     delete payload.sale_deeds;
+    delete payload.tenant_docs;
     return payload;
   };
 
@@ -685,6 +694,63 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+
+                {/* Tenant Agreement Upload */}
+                <div className="col-12 mt-2">
+                  <label className={styles.fieldLabel}>
+                    Tenant Agreement Upload &nbsp;
+                    <span style={{ fontWeight: 400, color: '#6c757d', fontSize: '0.78rem' }}>
+                      Please upload agreement copy
+                    </span>
+                  </label>
+                  <div className="mt-2 p-3 rounded"
+                    style={{ border: '1.5px dashed #b8c9e0', background: '#f8fafd' }}>
+
+                    {/* File list */}
+                    {(form.tenant_docs || []).length > 0 && (
+                      <ul className="list-unstyled mb-2">
+                        {form.tenant_docs.map((f, idx) => (
+                          <li key={idx} className="d-flex align-items-center gap-2 mb-1 small">
+                            {f.status === 'uploading' && (
+                              <span className="spinner-border spinner-border-sm text-primary" />
+                            )}
+                            {f.status === 'done'  && <span style={{ color: '#198754' }}>✔</span>}
+                            {f.status === 'saved' && <span style={{ color: '#1B3A6B' }}>🔗</span>}
+                            {f.status === 'error' && <span style={{ color: '#dc3545' }}>✖</span>}
+
+                            {f.url
+                              ? <a href={f.url} target="_blank" rel="noopener noreferrer"
+                                  className="text-truncate" style={{ maxWidth: 300 }}>{f.name}</a>
+                              : <span className="text-muted text-truncate" style={{ maxWidth: 300 }}>{f.name}</span>}
+                            {f.status === 'error' && (
+                              <span className="text-danger" style={{ fontSize: '0.72rem' }}>({f.error})</span>
+                            )}
+                            <button type="button" className="btn btn-sm btn-link text-danger p-0 ms-auto"
+                              onClick={() => removeTenantDoc(idx)} style={{ fontSize: '0.78rem' }}
+                              disabled={f.status === 'uploading'}>
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Upload button (hidden when 5 files reached) */}
+                    {(form.tenant_docs || []).length < 5 && (
+                      <label className="btn btn-sm btn-outline-primary mb-0" style={{ cursor: 'pointer' }}>
+                        + Add File
+                        <input type="file" hidden multiple
+                          accept=".pdf,image/*"
+                          onChange={handleTenantFiles} />
+                      </label>
+                    )}
+
+                    <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
+                      Up to 5 files · PDF or image · Max 10 MB per file
+                    </p>
+                  </div>
+                </div>
+
               </div>
             </SectionCard>
 
