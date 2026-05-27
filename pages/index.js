@@ -70,6 +70,13 @@ export default function Home() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [genError, setGenError] = useState('');
 
+  // ── Identity verification (shown when a saved submission already exists) ──────
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [verifyInput, setVerifyInput]     = useState('');
+  const [verifying, setVerifying]         = useState(false);
+  const [verifyError, setVerifyError]     = useState('');
+  const [pendingData, setPendingData]     = useState(null); // { data, sub }
+
   // ── Auto-lookup when arriving from admin (?unit=E103) ──────────────────────
   useEffect(() => {
     const unit = router.query.unit;
@@ -78,14 +85,96 @@ export default function Home() {
 
   // ── Core lookup logic (shared by form submit and URL param) ────────────────
 
+  // ── Restore a saved submission into form state ──────────────────────────────
+  // Sheet header → key mapping differs from form field names, e.g.:
+  //   "Primary Contact" → primary_contact  (not `contact`)
+  //   "Tenant Agreement URLs" → tenant_agreement_urls  (not `tenant_doc_urls`)
+  const applySubmission = useCallback((sub, data, unit) => {
+    const urlList = key =>
+      sub[key]
+        ? String(sub[key]).split(',').filter(Boolean).map(u => ({ url: u.trim(), name: u.trim().split('/').pop(), status: 'saved' }))
+        : [];
+
+    const members = Array(10).fill(null).map((_, i) => ({
+      name:     sub[`member_${i + 1}_name`]     || '',
+      age:      sub[`member_${i + 1}_age`]      || '',
+      relation: sub[`member_${i + 1}_relation`] || '',
+    }));
+    const vehicles = Array(5).fill(null).map((_, i) => ({
+      type:   sub[`vehicle_${i + 1}_type`]   || '',
+      make:   sub[`vehicle_${i + 1}_make`]   || '',
+      reg:    sub[`vehicle_${i + 1}_reg`]    || '',
+      colour: sub[`vehicle_${i + 1}_colour`] || '',
+      fuel:   sub[`vehicle_${i + 1}_fuel`]   || '',
+      park:   sub[`vehicle_${i + 1}_park`]   || '',
+    }));
+    const pets = Array(5).fill(null).map((_, i) => ({
+      name:          sub[`pet_${i + 1}_name`]          || '',
+      breed:         sub[`pet_${i + 1}_breed`]         || '',
+      age:           sub[`pet_${i + 1}_age`]           || '',
+      gender:        sub[`pet_${i + 1}_gender`]        || '',
+      vaccinated:    sub[`pet_${i + 1}_vaccinated`]    || '',
+      vacc_date:     sub[`pet_${i + 1}_vacc_date`]     || '',
+      next_vacc_date:sub[`pet_${i + 1}_next_vacc_date`]|| '',
+      cert_status:   sub[`pet_${i + 1}_cert_status`]   || '',
+    }));
+
+    setForm({
+      ...initForm(),
+      unit_number:            sub.unit_number               || (unit || '').toUpperCase(),
+      block:                  sub.block                     || '',
+      floor:                  sub.floor                     || '',
+      unit_type:              sub.unit_type                 || '',
+      car_park:               sub.car_park                  || '',
+      unique_id:              sub.unique_id                 || (data && data.unique_id) || '',
+      occupied_since:         sub.occupied_since            || '',
+      owner_name:             sub.owner_name                || '',
+      // Sheet header "Primary Contact" → key primary_contact
+      contact:                sub.primary_contact           || '',
+      whatsapp:               sub.primary_whatsapp          || '',
+      email:                  sub.primary_email             || '',
+      contact2:               sub.secondary_contact         || '',
+      whatsapp2:              sub.secondary_whatsapp        || '',
+      email2:                 sub.secondary_email           || '',
+      perm_address:           sub.permanent_address         || '',
+      occupancy_type:         sub.occupancy_type            || '',
+      total_occupants:        sub.total_occupants           || '',
+      members,
+      tenant_name:            sub.tenant_name               || '',
+      tenant_contact:         sub.tenant_contact            || '',
+      tenant_email:           sub.tenant_email              || '',
+      agreement_period:       sub.agreement_period          || '',
+      police_verification:    sub.police_verification       || '',
+      agreement_registered:   sub.agreement_registered      || '',
+      vehicles,
+      has_pets:               sub.has_pets                  || '',
+      membership_completed:   sub.membership_completed      || '',
+      membership_id:          sub.membership_id             || '',
+      maintenance_paid_up_to: sub.maintenance_paid_up_to    || '',
+      // Sheet header "Sale Deed URLs" → sale_deed_urls ✓
+      sale_deeds:     urlList('sale_deed_urls'),
+      // Sheet header "Tenant Agreement URLs" → tenant_agreement_urls (was tenant_doc_urls — fixed)
+      tenant_docs:    urlList('tenant_agreement_urls'),
+      // Sheet header "Pet Vaccination URLs" → pet_vaccination_urls (was pet_vacc_doc_urls — fixed)
+      pet_vacc_docs:  urlList('pet_vaccination_urls'),
+      pets,
+      date: new Date().toLocaleDateString('en-IN'),
+    });
+    setSubmissionLoaded(true);
+  }, []);
+
   const performLookup = useCallback(async (unit) => {
     if (!unit?.trim()) return;
     setUnitInput(unit.trim());
     setLookupStatus('loading');
     setSubmissionLoaded(false);
+    setVerificationStep(false);
+    setVerifyInput('');
+    setVerifyError('');
+    setPendingData(null);
+    setShowForm(false);
     setGenError('');
     try {
-
       const [lookupRes, subRes] = await Promise.all([
         fetch(`/api/lookup?unit=${encodeURIComponent(unit.trim())}`),
         fetch(`/api/get-submission?unit=${encodeURIComponent(unit.trim())}`),
@@ -96,68 +185,14 @@ export default function Home() {
 
       const sub = subRes.ok ? await subRes.json() : { found: false };
 
+      setLookupStatus(data.found ? 'found' : 'not_found');
+
       if (sub.found) {
-        // Restore members array from flat keys (member_1_name, member_1_age, ...)
-        const members = Array(10).fill(null).map((_, i) => ({
-          name:     sub[`member_${i + 1}_name`]     || '',
-          age:      sub[`member_${i + 1}_age`]      || '',
-          relation: sub[`member_${i + 1}_relation`] || '',
-        }));
-        // Restore vehicles array
-        const vehicles = Array(5).fill(null).map((_, i) => ({
-          type:   sub[`vehicle_${i + 1}_type`]   || '',
-          make:   sub[`vehicle_${i + 1}_make`]   || '',
-          reg:    sub[`vehicle_${i + 1}_reg`]    || '',
-          colour: sub[`vehicle_${i + 1}_colour`] || '',
-          fuel:   sub[`vehicle_${i + 1}_fuel`]   || '',
-          park:   sub[`vehicle_${i + 1}_park`]   || '',
-        }));
-        setForm({
-          ...initForm(),
-          unit_number:          sub.unit_number          || unit.toUpperCase(),
-          block:                sub.block                || '',
-          floor:                sub.floor                || '',
-          unit_type:            sub.unit_type            || '',
-          car_park:             sub.car_park             || '',
-          unique_id:            sub.unique_id            || data.unique_id || '',
-          occupied_since:       sub.occupied_since       || '',
-          owner_name:           sub.owner_name           || '',
-          contact:              sub.contact              || '',
-          whatsapp:             sub.whatsapp             || '',
-          email:                sub.email                || '',
-          contact2:             sub.contact2             || '',
-          whatsapp2:            sub.whatsapp2            || '',
-          email2:               sub.email2               || '',
-          perm_address:         sub.permanent_address    || '',
-          occupancy_type:       sub.occupancy_type       || '',
-          total_occupants:      sub.total_occupants      || '',
-          members,
-          tenant_name:          sub.tenant_name          || '',
-          tenant_contact:       sub.tenant_contact       || '',
-          tenant_email:         sub.tenant_email         || '',
-          agreement_period:     sub.agreement_period     || '',
-          police_verification:  sub.police_verification  || '',
-          agreement_registered: sub.agreement_registered || '',
-          vehicles,
-          has_pets:             sub.has_pets             || '',
-          membership_completed: sub.membership_completed || '',
-          membership_id:        sub.membership_id        || '',
-          maintenance_paid_up_to: sub.maintenance_paid_up_to || '',
-          sale_deeds:           sub.sale_deed_urls
-            ? String(sub.sale_deed_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
-            : [],
-          tenant_docs:          sub.tenant_doc_urls
-            ? String(sub.tenant_doc_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
-            : [],
-          pet_vacc_docs:        sub.pet_vacc_doc_urls
-            ? String(sub.pet_vacc_doc_urls).split(',').filter(Boolean).map(url => ({ url: url.trim(), name: url.trim().split('/').pop(), status: 'saved' }))
-            : [],
-          pets:                 Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
-          date:                 new Date().toLocaleDateString('en-IN'),
-        });
-        setSubmissionLoaded(true);
+        // Existing submission — show identity verification before revealing data
+        setPendingData({ data, sub });
+        setVerificationStep(true);
       } else {
-        // No saved submission — pre-fill from Units sheet only
+        // No saved submission — pre-fill from Units sheet and show form directly
         setForm({
           ...initForm(),
           unit_number:    data.unit_number    || unit.toUpperCase(),
@@ -179,20 +214,59 @@ export default function Home() {
           vehicles:       Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
           pets:           Array(5).fill(null).map(() => ({ ...EMPTY_PET })),
         });
+        setShowForm(true);
       }
-
-      setLookupStatus(data.found ? 'found' : 'not_found');
-      setShowForm(true);
     } catch (err) {
       setLookupStatus('error');
       setGenError(err.message);
     }
-  }, []);
+  }, [applySubmission]);
 
   const handleLookup = useCallback(async (e) => {
     e.preventDefault();
     await performLookup(unitInput);
   }, [unitInput, performLookup]);
+
+  // ── Verify identity before loading saved submission ─────────────────────────
+  const handleVerify = async () => {
+    if (!verifyInput.trim()) return;
+    setVerifying(true);
+    setVerifyError('');
+    try {
+      const res = await fetch('/api/verify-identity', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ unit: unitInput, value: verifyInput.trim() }),
+      });
+      const result = await res.json();
+      if (result.verified) {
+        applySubmission(pendingData.sub, pendingData.data, unitInput);
+        setVerificationStep(false);
+        setShowForm(true);
+      } else {
+        setVerifyError('Verification failed. Please check your Unique ID or registered mobile number.');
+      }
+    } catch {
+      setVerifyError('Verification error. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // ── Clear everything and reset to search ────────────────────────────────────
+  const handleClear = () => {
+    setShowForm(false);
+    setVerificationStep(false);
+    setVerifyInput('');
+    setVerifyError('');
+    setPendingData(null);
+    setForm(initForm());
+    setLookupStatus(null);
+    setSubmissionLoaded(false);
+    setUnitInput('');
+    setSubmitSuccess(false);
+    setGenError('');
+  };
 
   // ── Field updaters ──────────────────────────────────────────────────────────
 
@@ -455,12 +529,8 @@ export default function Home() {
                   <><span className="spinner-border spinner-border-sm me-2" />Looking up…</>
                 ) : 'Search'}
               </button>
-              {showForm && (
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); }}
-                >
+              {(showForm || verificationStep) && (
+                <button type="button" className="btn btn-outline-secondary" onClick={handleClear}>
                   Clear
                 </button>
               )}
@@ -493,6 +563,49 @@ export default function Home() {
             )}
           </div>
         </div>
+
+        {/* ─── Identity Verification ─── */}
+        {verificationStep && !showForm && (
+          <div className="card shadow-sm mb-4" style={{ border: '2px solid #3A5080' }}>
+            <div className="card-body p-4">
+              <h5 className="fw-semibold mb-1" style={{ color: '#1B3A6B' }}>
+                🔐 Identity Verification
+              </h5>
+              <p className="text-muted small mb-3">
+                A form has already been submitted for unit <strong>{unitInput.toUpperCase()}</strong>.
+                Please verify your identity to view and update your details.
+              </p>
+              <div className="d-flex gap-2 flex-wrap align-items-start">
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter your Unique ID or registered mobile number"
+                    value={verifyInput}
+                    onChange={e => setVerifyInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                    autoFocus
+                  />
+                </div>
+                <button
+                  className="btn btn-success"
+                  onClick={handleVerify}
+                  disabled={verifying || !verifyInput.trim()}
+                >
+                  {verifying
+                    ? <><span className="spinner-border spinner-border-sm me-2" />Verifying…</>
+                    : '✔ Verify & Open Form'}
+                </button>
+              </div>
+              {verifyError && (
+                <div className="alert alert-danger mt-3 mb-0 py-2 small">❌ {verifyError}</div>
+              )}
+              <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.78rem' }}>
+                Enter your <strong>Unique ID</strong> (from your welcome letter) or your <strong>registered mobile number</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ─── Form ─── */}
         {showForm && (
@@ -1055,8 +1168,7 @@ export default function Home() {
               </div>
             )}
             <div className="d-flex justify-content-end gap-3 mt-4 pb-4 flex-wrap">
-              <button type="button" className="btn btn-outline-secondary"
-                onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); setSubmitSuccess(false); }}>
+              <button type="button" className="btn btn-outline-secondary" onClick={handleClear}>
                 Cancel
               </button>
               <button
