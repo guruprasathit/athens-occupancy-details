@@ -15,6 +15,7 @@ export default function Admin() {
   const [fetchLoading, setFetchLoading] = useState(false);
   const [fetchError, setFetchError]     = useState('');
   const [search, setSearch]             = useState('');
+  const [exporting, setExporting]       = useState(false);
 
   // ── Restore session on page load ────────────────────────────────
   useEffect(() => {
@@ -65,6 +66,28 @@ export default function Admin() {
       setLoginError(err.message);
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // ── Export all submissions as Excel ─────────────────────────────
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/admin/export-excel', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `Athens_Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Export failed: ' + err.message);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -169,10 +192,20 @@ export default function Admin() {
                 <p className="mb-0 text-white opacity-75 small">Admin Dashboard</p>
               </div>
             </div>
-            <div className="d-flex gap-2">
+            <div className="d-flex gap-2 flex-wrap">
               <button className="btn btn-sm btn-outline-light"
                 onClick={() => fetchSubmissions(token)} disabled={fetchLoading}>
                 {fetchLoading ? <span className="spinner-border spinner-border-sm" /> : '↻ Refresh'}
+              </button>
+              <button
+                className="btn btn-sm btn-success fw-semibold"
+                onClick={handleExportExcel}
+                disabled={exporting || submissions.length === 0}
+                title="Download all submissions as Excel"
+              >
+                {exporting
+                  ? <><span className="spinner-border spinner-border-sm me-1" />Exporting…</>
+                  : `⬇ Export Excel (${submissions.length})`}
               </button>
               <Link href="/" className="btn btn-sm btn-light fw-semibold">+ New Form</Link>
               <button className="btn btn-sm btn-outline-light" onClick={handleLogout}>Logout</button>
