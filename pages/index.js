@@ -451,7 +451,7 @@ export default function Home() {
                         <td>
                           <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
                             value={m.name} onChange={e => setMember(i, 'name', e.target.value)}
-                            placeholder={i === 0 ? 'Head of household' : ''} />
+                            placeholder="" />
                         </td>
                         <td>
                           <select className={`form-select form-select-sm ${styles.tableInput}`}
