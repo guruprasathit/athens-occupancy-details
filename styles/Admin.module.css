@@ -119,6 +119,21 @@
 
 .btnEdit:hover { background: #2d5499; }
 
+.btnDelete {
+  background: #fff;
+  color: #dc3545;
+  border: 1.5px solid #dc3545;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btnDelete:hover:not(:disabled) { background: #dc3545; color: #fff; }
+.btnDelete:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .btnPrimary {
   background: #1B3A6B;
   color: #fff;

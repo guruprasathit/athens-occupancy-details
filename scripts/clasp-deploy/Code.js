@@ -40,6 +40,9 @@ function doPost(e) {
     if (body.action === 'uploadfile') {
       return json(uploadFileToDrive(body));
     }
+    if (body.action === 'deletesubmission') {
+      return json(deleteSubmission(body.unit || ''));
+    }
     return json({ error: 'Unknown action' });
   } catch (err) {
     return json({ error: err.message });
@@ -494,6 +497,28 @@ function uploadFileToDrive(data) {
     name:     file.getName(),
     size:     file.getSize()
   };
+}
+
+// ── Delete a submission row by unit number ───────────────────────
+// Called via doPost {action:'deletesubmission', unit:'E103'}
+
+function deleteSubmission(unitNumber) {
+  var ss    = getSS();
+  var sheet = ss.getSheetByName('Submissions');
+  if (!sheet) return { success: false, error: 'Submissions sheet not found' };
+
+  var key  = String(unitNumber).replace(/[\s\-]/g, '').toUpperCase();
+  var rows = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < rows.length; i++) {
+    var rowUnit = String(rows[i][1]).replace(/[\s\-]/g, '').toUpperCase(); // col B = Unit Number
+    if (rowUnit === key) {
+      sheet.deleteRow(i + 1); // sheet rows are 1-based; +1 because rows[0] is header
+      return { success: true, deleted: unitNumber, row: i + 1 };
+    }
+  }
+
+  return { success: false, error: 'No submission found for unit ' + unitNumber };
 }
 
 // ── Migrate Submissions sheet to latest column structure ─────────

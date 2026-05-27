@@ -16,6 +16,8 @@ export default function Admin() {
   const [fetchError, setFetchError]     = useState('');
   const [search, setSearch]             = useState('');
   const [exporting, setExporting]       = useState(false);
+  const [deleting, setDeleting]         = useState(null);   // unit number currently being deleted
+  const [deleteError, setDeleteError]   = useState('');
 
   // ── Restore session on page load ────────────────────────────────
   useEffect(() => {
@@ -96,6 +98,31 @@ export default function Admin() {
     setToken('');
     setSubmissions([]);
     setSearch('');
+  };
+
+  // ── Delete submission ───────────────────────────────────────────
+  const handleDelete = async (unitNumber) => {
+    const confirmed = window.confirm(
+      `Delete submission for unit ${unitNumber}?\n\nThis will permanently remove the row from the sheet. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(unitNumber);
+    setDeleteError('');
+    try {
+      const res = await fetch(
+        `/api/admin/delete-submission?unit=${encodeURIComponent(unitNumber)}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
+      // Remove from local state immediately — no need to refetch
+      setSubmissions(prev => prev.filter(s => s.unit_number !== unitNumber));
+    } catch (err) {
+      setDeleteError(`Failed to delete ${unitNumber}: ${err.message}`);
+    } finally {
+      setDeleting(null);
+    }
   };
 
   // ── Filter ───────────────────────────────────────────────────────
@@ -249,6 +276,12 @@ export default function Admin() {
         {fetchError && (
           <div className="alert alert-danger small">{fetchError}</div>
         )}
+        {deleteError && (
+          <div className="alert alert-danger small d-flex justify-content-between align-items-center">
+            {deleteError}
+            <button type="button" className="btn-close btn-sm" onClick={() => setDeleteError('')} />
+          </div>
+        )}
 
         {/* Table */}
         <div className={styles.tableCard}>
@@ -304,12 +337,24 @@ export default function Admin() {
                         <td className="text-center">{s.total_occupants || '—'}</td>
                         <td className="text-muted small">{s.submitted_at || '—'}</td>
                         <td>
-                          <button
-                            className={styles.btnEdit}
-                            onClick={() => router.push(`/?unit=${encodeURIComponent(s.unit_number)}`)}
-                          >
-                            Edit
-                          </button>
+                          <div className="d-flex gap-1">
+                            <button
+                              className={styles.btnEdit}
+                              onClick={() => router.push(`/?unit=${encodeURIComponent(s.unit_number)}`)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className={styles.btnDelete}
+                              onClick={() => handleDelete(s.unit_number)}
+                              disabled={deleting === s.unit_number}
+                              title={`Delete submission for ${s.unit_number}`}
+                            >
+                              {deleting === s.unit_number
+                                ? <span className="spinner-border spinner-border-sm" />
+                                : 'Delete'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
