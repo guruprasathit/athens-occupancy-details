@@ -344,9 +344,21 @@ export default function Home() {
 
   // ── Tenant agreement upload (reuses same API, different docType / stateKey) ──
 
+  // Max file size: 3 MB (base64 adds ~33% overhead; Vercel serverless limit is 4.5 MB)
+  const MAX_FILE_BYTES = 3 * 1024 * 1024;
+
   const makeFileHandler = (stateKey, docType) => async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+
+    // Client-side size check — reject oversized files before uploading
+    const oversized = files.filter(f => f.size > MAX_FILE_BYTES);
+    if (oversized.length) {
+      alert(`File${oversized.length > 1 ? 's' : ''} too large: ${oversized.map(f => f.name).join(', ')}\n\nMaximum size is 3 MB per file. Please compress or reduce the file size and try again.`);
+      e.target.value = '';
+      return;
+    }
+
     const existing = form[stateKey] || [];
     if (existing.length + files.length > 5) {
       alert('You can upload up to 5 files total.');
@@ -366,12 +378,23 @@ export default function Home() {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const res  = await fetch('/api/upload-deed', {
+        const res = await fetch('/api/upload-deed', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ filename: file.name, mimeType: file.type || 'application/octet-stream', base64, unitNumber: form.unit_number || 'Unknown', docType }),
         });
-        const data = await res.json();
+
+        // Safely parse JSON — a 413 from Vercel returns plain text, not JSON
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          const msg = res.status === 413
+            ? 'File too large. Please keep files under 3 MB.'
+            : `Server error (${res.status}). Please try again.`;
+          throw new Error(msg);
+        }
+
         if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
         setForm(prev => {
           const updated = [...(prev[stateKey] || [])];
@@ -864,7 +887,7 @@ export default function Home() {
                     )}
 
                     <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                      Up to 5 files · PDF or image · Max 10 MB per file
+                      Up to 5 files · PDF or image · Max 3 MB per file
                     </p>
                   </div>
                 </div>
@@ -1041,7 +1064,7 @@ export default function Home() {
                       )}
 
                       <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                        Up to 5 files · PDF or image · Max 10 MB per file
+                        Up to 5 files · PDF or image · Max 3 MB per file
                       </p>
                     </div>
                   </div>
@@ -1126,7 +1149,7 @@ export default function Home() {
                     )}
 
                     <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                      Up to 5 files · PDF or image · Max 10 MB per file
+                      Up to 5 files · PDF or image · Max 3 MB per file
                     </p>
                   </div>
                 </div>
