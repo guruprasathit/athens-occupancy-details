@@ -148,12 +148,15 @@ export default function Admin() {
 
         <div className={styles.header}>
           <div className="container-lg py-3">
-            <div className="d-flex align-items-center gap-3">
-              <div className={styles.headerIcon}>🏢</div>
-              <div>
-                <h1 className="mb-0 fw-bold text-white fs-4">Athens Occupancy Form</h1>
-                <p className="mb-0 text-white opacity-75 small">Admin Panel</p>
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div className="d-flex align-items-center gap-3">
+                <div className={styles.headerIcon}>🏢</div>
+                <div>
+                  <h1 className="mb-0 fw-bold text-white fs-4">Athens Occupancy Form</h1>
+                  <p className="mb-0 text-white opacity-75 small">Admin Panel</p>
+                </div>
               </div>
+              <Link href="/" className="btn btn-sm btn-outline-light fw-semibold">🏠 Home</Link>
             </div>
           </div>
         </div>
@@ -234,7 +237,7 @@ export default function Admin() {
                   ? <><span className="spinner-border spinner-border-sm me-1" />Exporting…</>
                   : `⬇ Export Excel (${submissions.length})`}
               </button>
-              <Link href="/" className="btn btn-sm btn-light fw-semibold">+ New Form</Link>
+              <Link href="/" className="btn btn-sm btn-light fw-semibold">🏠 Home</Link>
               <button className="btn btn-sm btn-outline-light" onClick={handleLogout}>Logout</button>
             </div>
           </div>

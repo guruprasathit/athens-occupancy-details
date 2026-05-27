@@ -512,7 +512,7 @@ export default function Home() {
       <div className={styles.header}>
         <div className="container-lg py-3">
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-3">
+            <Link href="/" className="d-flex align-items-center gap-3 text-decoration-none">
               <div className={styles.headerIcon}>🏢</div>
               <div>
                 <h1 className="mb-0 fw-bold text-white fs-4">Athens Occupancy Form</h1>
@@ -520,10 +520,11 @@ export default function Home() {
                   Casagrand Athens Phase I — Resident Registration
                 </p>
               </div>
-            </div>
-            <Link href="/admin" className="btn btn-sm btn-outline-light fw-semibold">
-              Admin
             </Link>
+            <div className="d-flex gap-2">
+              <Link href="/" className="btn btn-sm btn-outline-light fw-semibold">🏠 Home</Link>
+              <Link href="/admin" className="btn btn-sm btn-outline-light fw-semibold">Admin</Link>
+            </div>
           </div>
         </div>
       </div>
