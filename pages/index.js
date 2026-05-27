@@ -33,6 +33,7 @@ export default function Home() {
   const [lookupStatus, setLookupStatus] = useState(null); // null | 'loading' | 'found' | 'not_found' | 'error'
   const [submissionLoaded, setSubmissionLoaded] = useState(false); // true when existing submission was fetched
   const [generating, setGenerating] = useState(false);
+  const [generatingXls, setGeneratingXls] = useState(false);
   const [genError, setGenError] = useState('');
 
   // ── Auto-lookup when arriving from admin (?unit=E103) ──────────────────────
@@ -225,6 +226,64 @@ export default function Home() {
       setGenError('Error generating form: ' + err.message);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // ── Generate Excel ──────────────────────────────────────────────────────────
+
+  const handleGenerateExcel = async (e) => {
+    e.preventDefault();
+    setGeneratingXls(true);
+    setGenError('');
+
+    const payload = { ...form };
+    form.members.forEach((m, i) => {
+      payload[`member_${i + 1}_name`] = m.name;
+      payload[`member_${i + 1}_age`] = m.age;
+      payload[`member_${i + 1}_relation`] = m.relation;
+    });
+    form.vehicles.forEach((v, i) => {
+      payload[`vehicle_${i + 1}_type`] = v.type;
+      payload[`vehicle_${i + 1}_make`] = v.make;
+      payload[`vehicle_${i + 1}_reg`] = v.reg;
+      payload[`vehicle_${i + 1}_colour`] = v.colour;
+      payload[`vehicle_${i + 1}_fuel`] = v.fuel;
+      payload[`vehicle_${i + 1}_park`] = v.park;
+    });
+    form.pets.forEach((p, i) => {
+      payload[`pet_${i + 1}_breed`] = p.breed;
+      payload[`pet_${i + 1}_age`] = p.age;
+      payload[`pet_${i + 1}_vaccinated`] = p.vaccinated;
+      payload[`pet_${i + 1}_vacc_date`] = p.vacc_date;
+      payload[`pet_${i + 1}_cert_status`] = p.cert_status;
+    });
+    delete payload.members;
+    delete payload.vehicles;
+    delete payload.pets;
+
+    try {
+      const res = await fetch('/api/generate-excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setGenError('Error generating Excel: ' + err.message);
+    } finally {
+      setGeneratingXls(false);
     }
   };
 
@@ -654,15 +713,25 @@ export default function Home() {
             {genError && (
               <div className="alert alert-danger small mt-2">{genError}</div>
             )}
-            <div className="d-flex justify-content-end gap-3 mt-4 pb-4">
+            <div className="d-flex justify-content-end gap-3 mt-4 pb-4 flex-wrap">
               <button type="button" className="btn btn-outline-secondary"
                 onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); }}>
                 Cancel
               </button>
-              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating}>
+              <button
+                type="button"
+                className="btn btn-success px-4"
+                disabled={generatingXls || generating}
+                onClick={handleGenerateExcel}
+              >
+                {generatingXls ? (
+                  <><span className="spinner-border spinner-border-sm me-2" />Saving…</>
+                ) : '⬇ Save & Download (.xlsx)'}
+              </button>
+              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating || generatingXls}>
                 {generating ? (
                   <><span className="spinner-border spinner-border-sm me-2" />Generating…</>
-                ) : '⬇ Download Occupancy Form (.docx)'}
+                ) : '⬇ Download Form (.docx)'}
               </button>
             </div>
 
