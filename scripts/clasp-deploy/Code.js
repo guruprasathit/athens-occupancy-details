@@ -408,6 +408,19 @@ function buildSubmissionHeaders() {
   return headers;
 }
 
+// ── One-time Drive authorization helper (run this once from the editor) ─────
+// Select this function in the Apps Script editor and click Run.
+// It will trigger the Google Drive permission dialog.
+
+function authoriseDriveAccess() {
+  var folderName = 'Athens Occupancy - Sale Deeds';
+  var root       = DriveApp.getRootFolder();
+  var folders    = root.getFoldersByName(folderName);
+  var folder     = folders.hasNext() ? folders.next() : root.createFolder(folderName);
+  Logger.log('Drive authorised. Folder: ' + folder.getName() + ' (' + folder.getId() + ')');
+  return { success: true, folder: folder.getName() };
+}
+
 // ── Upload file to Google Drive ──────────────────────────────────
 // Called via doPost {action:'uploadfile', filename, mimeType, base64, unitNumber}
 
