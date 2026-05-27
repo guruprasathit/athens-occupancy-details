@@ -31,7 +31,8 @@ const RELATIONS  = [
   'Other',
 ];
 const EMPTY_MEMBER = { name: '', age: '', relation: '' };
-const EMPTY_VEHICLE = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
+const EMPTY_VEHICLE   = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
+const VEHICLE_TYPES   = ['', '2 Wheeler', '4 Wheeler'];
 const EMPTY_PET = { breed: '', age: '', vaccinated: '', vacc_date: '', cert_status: '' };
 
 function initForm() {
@@ -628,7 +629,13 @@ export default function Home() {
                     {form.vehicles.map((v, i) => (
                       <tr key={i} className={styles.memberRow}>
                         <td className="text-muted small align-middle">{i + 1}</td>
-                        {['type', 'make', 'reg', 'colour', 'fuel', 'park'].map(f => (
+                        <td>
+                          <select className={`form-select form-select-sm ${styles.tableInput}`}
+                            value={v.type} onChange={e => setVehicle(i, 'type', e.target.value)}>
+                            {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t || '— select —'}</option>)}
+                          </select>
+                        </td>
+                        {['make', 'reg', 'colour', 'fuel', 'park'].map(f => (
                           <td key={f}>
                             <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
                               value={v[f]} onChange={e => setVehicle(i, f, e.target.value)} />
