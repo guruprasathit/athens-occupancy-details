@@ -33,6 +33,8 @@ export default function Home() {
   const [lookupStatus, setLookupStatus] = useState(null); // null | 'loading' | 'found' | 'not_found' | 'error'
   const [submissionLoaded, setSubmissionLoaded] = useState(false); // true when existing submission was fetched
   const [generating, setGenerating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [genError, setGenError] = useState('');
 
   // ── Auto-lookup when arriving from admin (?unit=E103) ──────────────────────
@@ -175,45 +177,16 @@ export default function Home() {
     e.preventDefault();
     setGenerating(true);
     setGenError('');
-
-    // Flatten members/vehicles/pets into form payload
-    const payload = { ...form };
-    form.members.forEach((m, i) => {
-      payload[`member_${i + 1}_name`] = m.name;
-      payload[`member_${i + 1}_age`] = m.age;
-      payload[`member_${i + 1}_relation`] = m.relation;
-    });
-    form.vehicles.forEach((v, i) => {
-      payload[`vehicle_${i + 1}_type`] = v.type;
-      payload[`vehicle_${i + 1}_make`] = v.make;
-      payload[`vehicle_${i + 1}_reg`] = v.reg;
-      payload[`vehicle_${i + 1}_colour`] = v.colour;
-      payload[`vehicle_${i + 1}_fuel`] = v.fuel;
-      payload[`vehicle_${i + 1}_park`] = v.park;
-    });
-    form.pets.forEach((p, i) => {
-      payload[`pet_${i + 1}_breed`] = p.breed;
-      payload[`pet_${i + 1}_age`] = p.age;
-      payload[`pet_${i + 1}_vaccinated`] = p.vaccinated;
-      payload[`pet_${i + 1}_vacc_date`] = p.vacc_date;
-      payload[`pet_${i + 1}_cert_status`] = p.cert_status;
-    });
-    delete payload.members;
-    delete payload.vehicles;
-    delete payload.pets;
-
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload()),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error);
       }
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -221,10 +194,71 @@ export default function Home() {
       a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.docx`;
       a.click();
       URL.revokeObjectURL(url);
+      setSubmitSuccess(true);
     } catch (err) {
       setGenError('Error generating form: ' + err.message);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // ── Submit & Download Excel ─────────────────────────────────────────────────
+
+  const buildPayload = () => {
+    const payload = { ...form };
+    form.members.forEach((m, i) => {
+      payload[`member_${i + 1}_name`]     = m.name;
+      payload[`member_${i + 1}_age`]      = m.age;
+      payload[`member_${i + 1}_relation`] = m.relation;
+    });
+    form.vehicles.forEach((v, i) => {
+      payload[`vehicle_${i + 1}_type`]   = v.type;
+      payload[`vehicle_${i + 1}_make`]   = v.make;
+      payload[`vehicle_${i + 1}_reg`]    = v.reg;
+      payload[`vehicle_${i + 1}_colour`] = v.colour;
+      payload[`vehicle_${i + 1}_fuel`]   = v.fuel;
+      payload[`vehicle_${i + 1}_park`]   = v.park;
+    });
+    form.pets.forEach((p, i) => {
+      payload[`pet_${i + 1}_breed`]       = p.breed;
+      payload[`pet_${i + 1}_age`]         = p.age;
+      payload[`pet_${i + 1}_vaccinated`]  = p.vaccinated;
+      payload[`pet_${i + 1}_vacc_date`]   = p.vacc_date;
+      payload[`pet_${i + 1}_cert_status`] = p.cert_status;
+    });
+    delete payload.members;
+    delete payload.vehicles;
+    delete payload.pets;
+    return payload;
+  };
+
+  const handleSubmitExcel = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitSuccess(false);
+    setGenError('');
+    try {
+      const res = await fetch('/api/submit-excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error);
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSubmitSuccess(true);
+    } catch (err) {
+      setGenError('Submit failed: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -654,15 +688,30 @@ export default function Home() {
             {genError && (
               <div className="alert alert-danger small mt-2">{genError}</div>
             )}
+            {submitSuccess && (
+              <div className="alert alert-success small mt-2">
+                ✅ Form saved successfully! You can download a copy below.
+              </div>
+            )}
             <div className="d-flex justify-content-end gap-3 mt-4 pb-4 flex-wrap">
               <button type="button" className="btn btn-outline-secondary"
-                onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); }}>
+                onClick={() => { setShowForm(false); setForm(initForm()); setLookupStatus(null); setSubmissionLoaded(false); setUnitInput(''); setSubmitSuccess(false); }}>
                 Cancel
               </button>
-              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating}>
+              <button
+                type="button"
+                className="btn btn-success px-4"
+                disabled={submitting || generating}
+                onClick={handleSubmitExcel}
+              >
+                {submitting ? (
+                  <><span className="spinner-border spinner-border-sm me-2" />Submitting…</>
+                ) : '✔ Submit & Download (.xlsx)'}
+              </button>
+              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating || submitting}>
                 {generating ? (
                   <><span className="spinner-border spinner-border-sm me-2" />Generating…</>
-                ) : '⬇ Download Occupancy Form (.docx)'}
+                ) : '⬇ Download Form (.docx)'}
               </button>
             </div>
 
