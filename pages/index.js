@@ -33,7 +33,9 @@ const RELATIONS  = [
 const EMPTY_MEMBER = { name: '', age: '', relation: '' };
 const EMPTY_VEHICLE   = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
 const VEHICLE_TYPES   = ['', '2 Wheeler', '4 Wheeler'];
-const EMPTY_PET = { breed: '', age: '', vaccinated: '', vacc_date: '', cert_status: '' };
+const EMPTY_PET     = { name: '', breed: '', age: '', gender: '', vaccinated: '', vacc_date: '', next_vacc_date: '', cert_status: '' };
+const PET_GENDERS   = ['', 'Male', 'Female'];
+const PET_VACC_OPTS = ['', 'Yes', 'No'];
 
 function initForm() {
   return {
@@ -345,11 +347,14 @@ export default function Home() {
       payload[`vehicle_${i + 1}_park`]   = v.park;
     });
     form.pets.forEach((p, i) => {
-      payload[`pet_${i + 1}_breed`]       = p.breed;
-      payload[`pet_${i + 1}_age`]         = p.age;
-      payload[`pet_${i + 1}_vaccinated`]  = p.vaccinated;
-      payload[`pet_${i + 1}_vacc_date`]   = p.vacc_date;
-      payload[`pet_${i + 1}_cert_status`] = p.cert_status;
+      payload[`pet_${i + 1}_name`]          = p.name;
+      payload[`pet_${i + 1}_breed`]         = p.breed;
+      payload[`pet_${i + 1}_age`]           = p.age;
+      payload[`pet_${i + 1}_gender`]        = p.gender;
+      payload[`pet_${i + 1}_vaccinated`]    = p.vaccinated;
+      payload[`pet_${i + 1}_vacc_date`]     = p.vacc_date;
+      payload[`pet_${i + 1}_next_vacc_date`]= p.next_vacc_date;
+      payload[`pet_${i + 1}_cert_status`]   = p.cert_status;
     });
     delete payload.members;
     delete payload.vehicles;
@@ -831,11 +836,14 @@ export default function Home() {
                     <table className="table table-sm mb-0">
                       <thead>
                         <tr className={styles.membersThead}>
-                          <th>#</th>
+                          <th style={{ width: '4%' }}>#</th>
+                          <th>Pet Name</th>
                           <th>Type / Breed</th>
                           <th>Age</th>
+                          <th>Gender</th>
                           <th>Vaccinated?</th>
                           <th>Last Vacc. Date</th>
+                          <th>Next Due Date</th>
                           <th>Certificate Status</th>
                         </tr>
                       </thead>
@@ -843,12 +851,45 @@ export default function Home() {
                         {form.pets.map((p, i) => (
                           <tr key={i} className={styles.memberRow}>
                             <td className="text-muted small align-middle">{i + 1}</td>
-                            {['breed', 'age', 'vaccinated', 'vacc_date', 'cert_status'].map(f => (
-                              <td key={f}>
-                                <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
-                                  value={p[f]} onChange={e => setPet(i, f, e.target.value)} />
-                              </td>
-                            ))}
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.name} onChange={e => setPet(i, 'name', e.target.value)} />
+                            </td>
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.breed} onChange={e => setPet(i, 'breed', e.target.value)}
+                                placeholder="e.g. Dog – Labrador" />
+                            </td>
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.age} onChange={e => setPet(i, 'age', e.target.value)} />
+                            </td>
+                            <td>
+                              <select className={`form-select form-select-sm ${styles.tableInput}`}
+                                value={p.gender} onChange={e => setPet(i, 'gender', e.target.value)}>
+                                {PET_GENDERS.map(g => <option key={g} value={g}>{g || '— select —'}</option>)}
+                              </select>
+                            </td>
+                            <td>
+                              <select className={`form-select form-select-sm ${styles.tableInput}`}
+                                value={p.vaccinated} onChange={e => setPet(i, 'vaccinated', e.target.value)}>
+                                {PET_VACC_OPTS.map(v => <option key={v} value={v}>{v || '— select —'}</option>)}
+                              </select>
+                            </td>
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.vacc_date} onChange={e => setPet(i, 'vacc_date', e.target.value)}
+                                placeholder="dd/mm/yyyy" />
+                            </td>
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.next_vacc_date} onChange={e => setPet(i, 'next_vacc_date', e.target.value)}
+                                placeholder="dd/mm/yyyy" />
+                            </td>
+                            <td>
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.cert_status} onChange={e => setPet(i, 'cert_status', e.target.value)} />
+                            </td>
                           </tr>
                         ))}
                       </tbody>

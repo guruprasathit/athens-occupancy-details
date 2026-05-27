@@ -169,6 +169,18 @@ function saveSubmission(d) {
     vehicleFields.push(d['vehicle_' + j + '_park']   || '');
   }
 
+  var petFields = [];
+  for (var k = 1; k <= 5; k++) {
+    petFields.push(d['pet_' + k + '_name']           || '');
+    petFields.push(d['pet_' + k + '_breed']          || '');
+    petFields.push(d['pet_' + k + '_age']            || '');
+    petFields.push(d['pet_' + k + '_gender']         || '');
+    petFields.push(d['pet_' + k + '_vaccinated']     || '');
+    petFields.push(d['pet_' + k + '_vacc_date']      || '');
+    petFields.push(d['pet_' + k + '_next_vacc_date'] || '');
+    petFields.push(d['pet_' + k + '_cert_status']    || '');
+  }
+
   var row = [
     now,
     d.unit_number    || '',
@@ -196,7 +208,8 @@ function saveSubmission(d) {
     d.police_verification  || '',
     d.agreement_registered || ''
   ]).concat(vehicleFields).concat([
-    d.has_pets                || '',
+    d.has_pets || ''
+  ]).concat(petFields).concat([
     d.membership_completed    || '',
     d.membership_id           || '',
     d.maintenance_paid_up_to  || '',
@@ -406,7 +419,12 @@ function buildSubmissionHeaders() {
     headers.push('Vehicle ' + j + ' Type', 'Vehicle ' + j + ' Make', 'Vehicle ' + j + ' Reg',
                  'Vehicle ' + j + ' Colour', 'Vehicle ' + j + ' Fuel', 'Vehicle ' + j + ' Park');
   }
-  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs', 'Pet Vaccination URLs');
+  headers.push('Has Pets');
+  for (var k = 1; k <= 5; k++) {
+    headers.push('Pet ' + k + ' Name', 'Pet ' + k + ' Breed', 'Pet ' + k + ' Age', 'Pet ' + k + ' Gender',
+                 'Pet ' + k + ' Vaccinated', 'Pet ' + k + ' Last Vacc Date', 'Pet ' + k + ' Next Due Date', 'Pet ' + k + ' Cert Status');
+  }
+  headers.push('Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs', 'Tenant Agreement URLs', 'Pet Vaccination URLs');
   return headers;
 }
 
