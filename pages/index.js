@@ -66,7 +66,6 @@ export default function Home() {
   const [lookupStatus, setLookupStatus] = useState(null); // null | 'loading' | 'found' | 'not_found' | 'error'
   const [submissionLoaded, setSubmissionLoaded] = useState(false); // true when existing submission was fetched
   const [generating, setGenerating] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [genError, setGenError] = useState('');
 
@@ -319,14 +318,15 @@ export default function Home() {
       return { ...f, pets };
     });
 
-  // ── Generate ────────────────────────────────────────────────────────────────
+  // ── Submit and download PDF ─────────────────────────────────────────────────
 
-  const handleGenerate = async (e) => {
+  const handleSubmitAndDownload = async (e) => {
     e.preventDefault();
     setGenerating(true);
+    setSubmitSuccess(false);
     setGenError('');
     try {
-      const res = await fetch('/api/generate', {
+      const res = await fetch('/api/submit-and-download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload()),
@@ -336,15 +336,15 @@ export default function Home() {
         throw new Error(err.error);
       }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.docx`;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `Athens_Occupancy_${form.unit_number || 'Form'}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setSubmitSuccess(true);
     } catch (err) {
-      setGenError('Error generating form: ' + err.message);
+      setGenError('Error submitting form: ' + err.message);
     } finally {
       setGenerating(false);
     }
@@ -498,28 +498,6 @@ export default function Home() {
     return payload;
   };
 
-  // ── Submit (save to Google Sheets only) ────────────────────────────────────
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setSubmitSuccess(false);
-    setGenError('');
-    try {
-      const res  = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload()),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submit failed');
-      setSubmitSuccess(true);
-    } catch (err) {
-      setGenError('Submit failed: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -659,7 +637,7 @@ export default function Home() {
 
         {/* ─── Form ─── */}
         {showForm && (
-          <form onSubmit={handleGenerate}>
+          <form onSubmit={handleSubmitAndDownload}>
 
             {/* 01 — Unit Information */}
             <SectionCard num="01" title="UNIT INFORMATION">
@@ -1218,9 +1196,9 @@ export default function Home() {
                   🎉 Thank you for filling in your details!
                 </div>
                 <div className="small">
-                  Your information has been saved successfully. You have taken an important step
-                  towards building a <strong>safe and secure gateway community</strong> at
-                  Casagrand Athens. You may download a copy of your form below.
+                  Your information has been saved and your form PDF has been downloaded. You have
+                  taken an important step towards building a <strong>safe and secure gateway
+                  community</strong> at Casagrand Athens.
                 </div>
               </div>
             )}
@@ -1228,20 +1206,10 @@ export default function Home() {
               <button type="button" className="btn btn-outline-secondary" onClick={handleClear}>
                 Cancel
               </button>
-              <button
-                type="button"
-                className="btn btn-success px-4"
-                disabled={submitting || generating}
-                onClick={handleSubmit}
-              >
-                {submitting ? (
-                  <><span className="spinner-border spinner-border-sm me-2" />Submitting…</>
-                ) : '✔ Submit'}
-              </button>
-              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating || submitting}>
+              <button type="submit" className={`btn ${styles.btnPrimary} px-4`} disabled={generating}>
                 {generating ? (
-                  <><span className="spinner-border spinner-border-sm me-2" />Generating…</>
-                ) : '⬇ Download Form (.docx)'}
+                  <><span className="spinner-border spinner-border-sm me-2" />Saving &amp; Downloading…</>
+                ) : '⬇ Submit and Download (.pdf)'}
               </button>
             </div>
 
