@@ -11,7 +11,7 @@ const EMPTY_PET = { breed: '', age: '', vaccinated: '', vacc_date: '', cert_stat
 
 function initForm() {
   return {
-    unit_number: '', block: '', floor: '', unit_type: '', car_park: '', occupied_since: '',
+    unit_number: '', block: '', floor: '', unit_type: '', car_park: '', unique_id: '', occupied_since: '',
     owner_name: '', contact: '', whatsapp: '', email: '', perm_address: '',
     occupancy_type: '', total_occupants: '',
     members: Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
@@ -84,6 +84,7 @@ export default function Home() {
           floor:                sub.floor                || '',
           unit_type:            sub.unit_type            || '',
           car_park:             sub.car_park             || '',
+          unique_id:            sub.unique_id            || data.unique_id || '',
           occupied_since:       sub.occupied_since       || '',
           owner_name:           sub.owner_name           || '',
           contact:              sub.contact              || '',
@@ -112,11 +113,12 @@ export default function Home() {
         // No saved submission — pre-fill from Units sheet only
         setForm({
           ...initForm(),
-          unit_number:    data.unit_number || unit.toUpperCase(),
+          unit_number:    data.unit_number    || unit.toUpperCase(),
           block:          data.block          || '',
           floor:          data.floor          || '',
           unit_type:      data.unit_type      || '',
           car_park:       data.car_park       || '',
+          unique_id:      data.unique_id      || '',
           owner_name:     data.owner_name     || '',
           contact:        data.contact        || '',
           whatsapp:       data.whatsapp       || '',
@@ -342,7 +344,19 @@ export default function Home() {
                   <FormField label="Unit Type" value={form.unit_type} onChange={v => set('unit_type', v)}
                     placeholder="2BHK, 3BHK…" />
                 </div>
-                <div className="col-md-6">
+                <div className="col-md-3">
+                  <div>
+                    <label className={styles.fieldLabel}>Unique ID</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm mt-1"
+                      value={form.unique_id}
+                      readOnly
+                      style={{ background: '#f0f4f8', fontWeight: 600, letterSpacing: '0.08em', color: '#1B3A6B' }}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-3">
                   <FormField label="Car Park Slot(s)" value={form.car_park} onChange={v => set('car_park', v)} />
                 </div>
                 <div className="col-md-6">

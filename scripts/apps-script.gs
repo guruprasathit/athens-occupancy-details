@@ -25,13 +25,16 @@ function doGet(e) {
   return json({ error: 'Unknown action. Use ?action=lookup&unit=E103, ?action=getsubmission&unit=E103, ?action=getallsubmissions, or ?action=setup' });
 }
 
-// ── POST handler: save submission ────────────────────────────────
+// ── POST handler: save submission / batch import ─────────────────
 
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     if (body.action === 'submit') {
       return json(saveSubmission(body.data));
+    }
+    if (body.action === 'batchimport') {
+      return json(batchImport(body.units || []));
     }
     return json({ error: 'Unknown action' });
   } catch (err) {
@@ -56,16 +59,17 @@ function lookup(unitNumber) {
 
     if (rowUnit === key) {
       return json({
-        unit_number:    String(row[0] || ''),
-        block:          String(row[1] || ''),
-        floor:          String(row[2] || ''),
-        unit_type:      String(row[3] || ''),
-        car_park:       String(row[4] || ''),
-        owner_name:     String(row[5] || ''),
-        contact:        String(row[6] || ''),
-        whatsapp:       String(row[7] || ''),
-        email:          String(row[8] || ''),
-        occupancy_type: String(row[9] || ''),
+        unit_number:    String(row[0]  || ''),
+        block:          String(row[1]  || ''),
+        floor:          String(row[2]  || ''),
+        unit_type:      String(row[3]  || ''),
+        car_park:       String(row[4]  || ''),
+        owner_name:     String(row[5]  || ''),
+        contact:        String(row[6]  || ''),
+        whatsapp:       String(row[7]  || ''),
+        email:          String(row[8]  || ''),
+        occupancy_type: String(row[9]  || ''),
+        unique_id:      String(row[10] || ''),
         found: true
       });
     }
@@ -147,6 +151,7 @@ function saveSubmission(d) {
     d.floor          || '',
     d.unit_type      || '',
     d.car_park       || '',
+    d.unique_id      || '',
     d.occupied_since || '',
     d.owner_name     || '',
     d.contact        || '',
@@ -183,6 +188,60 @@ function saveSubmission(d) {
   return { success: true, action: 'inserted' };
 }
 
+// ── Batch-import Flat No → Unique ID mapping into Units sheet ────
+
+function batchImport(units) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Units');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Units');
+    sheet.appendRow([
+      'Unit Number', 'Block', 'Floor', 'Unit Type', 'Car Park',
+      'Owner Name', 'Contact', 'WhatsApp', 'Email', 'Occupancy Type', 'Unique ID', 'Notes'
+    ]);
+    sheet.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
+  }
+
+  // Ensure "Unique ID" header exists in col K
+  if (sheet.getRange(1, 11).getValue() !== 'Unique ID') {
+    sheet.getRange(1, 11).setValue('Unique ID').setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
+  }
+
+  // Build map: normalised unit → row index (1-based, sheet rows)
+  var rows = sheet.getDataRange().getValues();
+  var rowMap = {};
+  for (var i = 1; i < rows.length; i++) {
+    var k = String(rows[i][0]).replace(/[\s\-]/g, '').toUpperCase();
+    if (k) rowMap[k] = i + 1; // sheet row number (1-based)
+  }
+
+  var updated = 0, inserted = 0;
+
+  for (var u = 0; u < units.length; u++) {
+    var flatNo   = String(units[u].flat_no   || '').replace(/[\s\-]/g, '').toUpperCase();
+    var uniqueId = String(units[u].unique_id || '');
+    if (!flatNo || !uniqueId) continue;
+
+    if (rowMap[flatNo]) {
+      // Update col K of existing row
+      sheet.getRange(rowMap[flatNo], 11).setValue(uniqueId);
+      updated++;
+    } else {
+      // Derive block/floor and append new row
+      var m      = flatNo.match(/^([A-Z]+)(\d+)$/);
+      var block  = m ? m[1] : '';
+      var digits = m ? m[2] : '';
+      var floor  = digits.length <= 3 ? digits.charAt(0) : digits.slice(0, -2);
+      sheet.appendRow([flatNo, block, floor, '', '', '', '', '', '', '', uniqueId, '']);
+      inserted++;
+    }
+  }
+
+  return { success: true, updated: updated, inserted: inserted };
+}
+
 // ── Return all submissions (for admin dashboard) ─────────────────
 
 function getAllSubmissions() {
@@ -217,10 +276,9 @@ function setupSheets() {
   if (units.getLastRow() === 0) {
     units.appendRow([
       'Unit Number', 'Block', 'Floor', 'Unit Type', 'Car Park',
-      'Owner Name', 'Contact', 'WhatsApp', 'Email', 'Occupancy Type', 'Notes'
+      'Owner Name', 'Contact', 'WhatsApp', 'Email', 'Occupancy Type', 'Unique ID', 'Notes'
     ]);
-    // Format header row
-    units.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
+    units.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#1B3A6B').setFontColor('#FFFFFF');
     units.setFrozenRows(1);
   }
 
@@ -239,7 +297,7 @@ function setupSheets() {
 function buildSubmissionHeaders() {
   var headers = [
     'Submitted At', 'Unit Number', 'Block', 'Floor', 'Unit Type', 'Car Park',
-    'Occupied Since', 'Owner Name', 'Contact', 'WhatsApp', 'Email',
+    'Unique ID', 'Occupied Since', 'Owner Name', 'Contact', 'WhatsApp', 'Email',
     'Permanent Address', 'Occupancy Type', 'Total Occupants'
   ];
   for (var i = 1; i <= 10; i++) {

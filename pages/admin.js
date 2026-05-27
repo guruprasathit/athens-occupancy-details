@@ -237,6 +237,7 @@ export default function Admin() {
                   <tr className={styles.tableHead}>
                     <th>#</th>
                     <th>Unit</th>
+                    <th>Unique ID</th>
                     <th>Block</th>
                     <th>Floor</th>
                     <th>Owner Name</th>
@@ -257,6 +258,7 @@ export default function Admin() {
                       <tr key={i} className={styles.tableRow}>
                         <td className="text-muted">{i + 1}</td>
                         <td><span className={styles.unitBadge}>{s.unit_number}</span></td>
+                        <td><code style={{ fontSize: '0.78rem', color: '#1B3A6B' }}>{s.unique_id || '—'}</code></td>
                         <td>{s.block}</td>
                         <td>{s.floor}</td>
                         <td className="fw-semibold">{s.owner_name || '—'}</td>
