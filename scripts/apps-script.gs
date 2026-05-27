@@ -15,11 +15,14 @@ function doGet(e) {
   if (action === 'getsubmission') {
     return getSubmission(e.parameter.unit || '');
   }
+  if (action === 'getallsubmissions') {
+    return getAllSubmissions();
+  }
   if (action === 'setup') {
     return json(setupSheets());
   }
 
-  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103, ?action=getsubmission&unit=E103, or ?action=setup' });
+  return json({ error: 'Unknown action. Use ?action=lookup&unit=E103, ?action=getsubmission&unit=E103, ?action=getallsubmissions, or ?action=setup' });
 }
 
 // ── POST handler: save submission ────────────────────────────────
@@ -178,6 +181,29 @@ function saveSubmission(d) {
 
   sheet.appendRow(row);
   return { success: true, action: 'inserted' };
+}
+
+// ── Return all submissions (for admin dashboard) ─────────────────
+
+function getAllSubmissions() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Submissions');
+  if (!sheet || sheet.getLastRow() <= 1) return json({ submissions: [] });
+
+  var rows    = sheet.getDataRange().getValues();
+  var headers = rows[0];
+  var submissions = [];
+
+  for (var i = 1; i < rows.length; i++) {
+    var obj = {};
+    for (var c = 0; c < headers.length; c++) {
+      var key = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
+      obj[key] = rows[i][c] !== undefined ? String(rows[i][c]) : '';
+    }
+    submissions.push(obj);
+  }
+
+  return json({ submissions: submissions });
 }
 
 // ── Create sheet headers (run once via ?action=setup) ────────────

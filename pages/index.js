@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const AGE_RANGES = ['', '0-7', '8-14', '15-24', '25-44', '44-59', '60-74', '75+'];
@@ -24,6 +26,7 @@ function initForm() {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [unitInput, setUnitInput] = useState('');
   const [form, setForm] = useState(initForm());
   const [showForm, setShowForm] = useState(false);
@@ -32,21 +35,25 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
 
-  // ── Lookup ──────────────────────────────────────────────────────────────────
+  // ── Auto-lookup when arriving from admin (?unit=E103) ──────────────────────
+  useEffect(() => {
+    const unit = router.query.unit;
+    if (unit) performLookup(unit);
+  }, [router.query.unit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleLookup = useCallback(async (e) => {
-    e.preventDefault();
-    if (!unitInput.trim()) return;
+  // ── Core lookup logic (shared by form submit and URL param) ────────────────
+
+  const performLookup = useCallback(async (unit) => {
+    if (!unit?.trim()) return;
+    setUnitInput(unit.trim());
     setLookupStatus('loading');
     setSubmissionLoaded(false);
     setGenError('');
     try {
-      const unit = unitInput.trim();
 
-      // Fetch unit master data and any saved submission in parallel
       const [lookupRes, subRes] = await Promise.all([
-        fetch(`/api/lookup?unit=${encodeURIComponent(unit)}`),
-        fetch(`/api/get-submission?unit=${encodeURIComponent(unit)}`),
+        fetch(`/api/lookup?unit=${encodeURIComponent(unit.trim())}`),
+        fetch(`/api/get-submission?unit=${encodeURIComponent(unit.trim())}`),
       ]);
 
       const data = await lookupRes.json();
@@ -128,7 +135,12 @@ export default function Home() {
       setLookupStatus('error');
       setGenError(err.message);
     }
-  }, [unitInput]);
+  }, []);
+
+  const handleLookup = useCallback(async (e) => {
+    e.preventDefault();
+    await performLookup(unitInput);
+  }, [unitInput, performLookup]);
 
   // ── Field updaters ──────────────────────────────────────────────────────────
 
@@ -226,14 +238,19 @@ export default function Home() {
       {/* ─── Header ─── */}
       <div className={styles.header}>
         <div className="container-lg py-3">
-          <div className="d-flex align-items-center gap-3">
-            <div className={styles.headerIcon}>🏢</div>
-            <div>
-              <h1 className="mb-0 fw-bold text-white fs-4">Athens Occupancy Form</h1>
-              <p className="mb-0 text-white opacity-75 small">
-                Casagrand Athens Phase I — Resident Registration
-              </p>
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-3">
+              <div className={styles.headerIcon}>🏢</div>
+              <div>
+                <h1 className="mb-0 fw-bold text-white fs-4">Athens Occupancy Form</h1>
+                <p className="mb-0 text-white opacity-75 small">
+                  Casagrand Athens Phase I — Resident Registration
+                </p>
+              </div>
             </div>
+            <Link href="/admin" className="btn btn-sm btn-outline-light fw-semibold">
+              Admin
+            </Link>
           </div>
         </div>
       </div>
