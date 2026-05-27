@@ -1,0 +1,121 @@
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #1B3A6B 0%, #2E5CA3 100%);
+  border-bottom: 3px solid #B8C9E0;
+  box-shadow: 0 2px 8px rgba(27,58,107,0.3);
+}
+
+.headerIcon {
+  font-size: 2rem;
+  width: 48px;
+  text-align: center;
+}
+
+/* ── Buttons ── */
+.btnPrimary {
+  background: linear-gradient(135deg, #1B3A6B 0%, #2E5CA3 100%);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+}
+.btnPrimary:hover, .btnPrimary:focus {
+  background: linear-gradient(135deg, #152e56 0%, #254e8a 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(27,58,107,0.4);
+}
+.btnPrimary:disabled {
+  background: #6c8dbf;
+  border: none;
+}
+
+/* ── Search Card ── */
+.searchCard {
+  border: 1px solid #B8C9E0;
+  border-top: 3px solid #1B3A6B;
+}
+
+/* ── Section Cards ── */
+.sectionCard {
+  border: 1px solid #dce8f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sectionCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #1B3A6B 0%, #2a4f8a 100%);
+  padding: 10px 16px;
+}
+
+.sectionNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── Field Label ── */
+.fieldLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3A5080;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+/* ── Members Table ── */
+.membersHeader {
+  background: #3A5080;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: -1px;
+  letter-spacing: 0.3px;
+}
+
+.membersThead th {
+  background: #dce8f5;
+  color: #1B3A6B;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-color: #B8C9E0;
+}
+
+.memberRow td {
+  vertical-align: middle;
+  padding: 4px 6px;
+  border-color: #e2ecf7;
+}
+
+.tableInput {
+  border-color: #c5d8ef;
+  font-size: 0.82rem;
+}
+.tableInput:focus {
+  border-color: #1B3A6B;
+  box-shadow: 0 0 0 2px rgba(27,58,107,0.12);
+}
+

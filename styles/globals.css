@@ -1,0 +1,22 @@
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #f0f4f8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Bootstrap overrides */
+.form-control,
+.form-select {
+  border-color: #c5d8ef;
+  font-size: 0.875rem;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: #1B3A6B;
+  box-shadow: 0 0 0 3px rgba(27,58,107,0.1);
+}
+.form-check-input:checked {
+  background-color: #1B3A6B;
+  border-color: #1B3A6B;
+}
