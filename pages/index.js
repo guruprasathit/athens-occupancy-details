@@ -536,7 +536,7 @@ export default function Home() {
           <div className="card-body p-4">
             <h5 className={`fw-semibold mb-1 ${styles.sectionTitle}`}>Unit Number Lookup</h5>
             <p className="text-muted small mb-3">
-              Enter the flat / unit number to auto-fill owner details from the database.
+              Enter the flat / unit number to fill the Occupancy form
             </p>
             <form onSubmit={handleLookup} className="d-flex gap-2 flex-wrap">
               <input
