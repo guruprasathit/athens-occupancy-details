@@ -57,15 +57,20 @@ function lookup(unitNumber) {
   var allRows = sheet.getDataRange().getValues();
   var headers = allRows[0];
 
-  // Map each header name -> column index
-  function col(name) {
+  // Map each header name -> column index (case-insensitive, trims spaces)
+  function col() {
+    var aliases = Array.prototype.slice.call(arguments);
     for (var h = 0; h < headers.length; h++) {
-      if (String(headers[h]).trim() === name) return h;
+      var hdr = String(headers[h]).trim().toLowerCase();
+      for (var a = 0; a < aliases.length; a++) {
+        if (hdr === aliases[a].toLowerCase()) return h;
+      }
     }
     return -1;
   }
 
-  var iUnit   = col('Unit Number');   if (iUnit  < 0) iUnit  = 0;
+  var iUnit   = col('Unit Number', 'Unit No', 'Flat No', 'Flat Number', 'UnitNo');
+  if (iUnit < 0) iUnit = 0;
   var iBlock  = col('Block');
   var iFloor  = col('Floor');
   var iType   = col('Unit Type');
@@ -306,19 +311,30 @@ function batchImport(units) {
   // Auto-migrate if "Unique ID" column is missing
   var migrateResult = migrateUnitsSheet();
 
-  // Find "Unique ID" column index (1-based) dynamically
+  // Find column indices dynamically by header name
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var uidCol  = 11; // fallback: col K
-  for (var h = 0; h < headers.length; h++) {
-    if (String(headers[h]).trim() === 'Unique ID') { uidCol = h + 1; break; }
+
+  function colIdx() {
+    var aliases = Array.prototype.slice.call(arguments);
+    for (var h = 0; h < headers.length; h++) {
+      var hdr = String(headers[h]).trim().toLowerCase();
+      for (var a = 0; a < aliases.length; a++) {
+        if (hdr === aliases[a].toLowerCase()) return h;
+      }
+    }
+    return -1;
   }
-  var unitCol = 1; // Unit Number always col A
+
+  var uidColIdx  = colIdx('Unique ID', 'UniqueID', 'Unique_ID');
+  var uidCol     = uidColIdx >= 0 ? uidColIdx + 1 : 11; // 1-based, fallback col K
+  var unitColIdx = colIdx('Unit Number', 'Unit No', 'Flat No', 'Flat Number', 'UnitNo');
+  var unitCol    = unitColIdx >= 0 ? unitColIdx : 0; // 0-based for array access
 
   // Build map: normalised unit → sheet row number (1-based)
   var rows   = sheet.getDataRange().getValues();
   var rowMap = {};
   for (var i = 1; i < rows.length; i++) {
-    var k = String(rows[i][0]).replace(/[\s\-]/g, '').toUpperCase();
+    var k = String(rows[i][unitCol]).replace(/[\s\-]/g, '').toUpperCase();
     if (k) rowMap[k] = i + 1;
   }
 
