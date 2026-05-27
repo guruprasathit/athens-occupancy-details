@@ -346,13 +346,26 @@ export default function Home() {
                 </div>
                 <div className="col-md-3">
                   <div>
-                    <label className={styles.fieldLabel}>Unique ID</label>
+                    <label className={styles.fieldLabel}>
+                      Unique ID &nbsp;
+                      <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#6c757d' }}>🔒 auto-filled</span>
+                    </label>
                     <input
                       type="text"
                       className="form-control form-control-sm mt-1"
-                      value={form.unique_id}
+                      value={form.unique_id || '—'}
                       readOnly
-                      style={{ background: '#f0f4f8', fontWeight: 600, letterSpacing: '0.08em', color: '#1B3A6B' }}
+                      tabIndex={-1}
+                      title="Auto-filled from the master sheet. Cannot be edited."
+                      style={{
+                        background: '#e8f0fb',
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        color: form.unique_id ? '#1B3A6B' : '#adb5bd',
+                        cursor: 'not-allowed',
+                        border: '1px solid #b8c9e0',
+                        userSelect: 'none',
+                      }}
                     />
                   </div>
                 </div>
