@@ -37,7 +37,9 @@ const EMPTY_PET = { breed: '', age: '', vaccinated: '', vacc_date: '', cert_stat
 function initForm() {
   return {
     unit_number: '', block: '', floor: '', unit_type: '', car_park: '', unique_id: '', occupied_since: '',
-    owner_name: '', contact: '', whatsapp: '', email: '', perm_address: '',
+    owner_name: '', contact: '', whatsapp: '', email: '',
+    contact2: '', whatsapp2: '', email2: '',
+    perm_address: '',
     occupancy_type: '', total_occupants: '',
     members: Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
     tenant_name: '', tenant_contact: '', tenant_email: '',
@@ -117,6 +119,9 @@ export default function Home() {
           contact:              sub.contact              || '',
           whatsapp:             sub.whatsapp             || '',
           email:                sub.email                || '',
+          contact2:             sub.contact2             || '',
+          whatsapp2:            sub.whatsapp2            || '',
+          email2:               sub.email2               || '',
           perm_address:         sub.permanent_address    || '',
           occupancy_type:       sub.occupancy_type       || '',
           total_occupants:      sub.total_occupants      || '',
@@ -150,6 +155,9 @@ export default function Home() {
           contact:        data.contact        || '',
           whatsapp:       data.whatsapp       || '',
           email:          data.email          || '',
+          contact2:       '',
+          whatsapp2:      '',
+          email2:         '',
           occupancy_type: data.occupancy_type || '',
           date:           new Date().toLocaleDateString('en-IN'),
           members:        Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
@@ -438,8 +446,15 @@ export default function Home() {
                   <FormField label="Full Name of Owner *" value={form.owner_name}
                     onChange={v => set('owner_name', v)} required />
                 </div>
+
+                {/* Primary contact row */}
+                <div className="col-12">
+                  <label className={styles.fieldLabel} style={{ color: '#3A5080', fontWeight: 700 }}>
+                    Primary Contact
+                  </label>
+                </div>
                 <div className="col-md-4">
-                  <FormField label="Primary Contact *" value={form.contact}
+                  <FormField label="Contact No." value={form.contact}
                     onChange={v => set('contact', v)} type="tel" />
                 </div>
                 <div className="col-md-4">
@@ -450,6 +465,26 @@ export default function Home() {
                   <FormField label="Email Address" value={form.email}
                     onChange={v => set('email', v)} type="email" />
                 </div>
+
+                {/* Secondary contact row */}
+                <div className="col-12">
+                  <label className={styles.fieldLabel} style={{ color: '#3A5080', fontWeight: 700 }}>
+                    Secondary Contact
+                  </label>
+                </div>
+                <div className="col-md-4">
+                  <FormField label="Contact No." value={form.contact2}
+                    onChange={v => set('contact2', v)} type="tel" />
+                </div>
+                <div className="col-md-4">
+                  <FormField label="WhatsApp No." value={form.whatsapp2}
+                    onChange={v => set('whatsapp2', v)} type="tel" />
+                </div>
+                <div className="col-md-4">
+                  <FormField label="Email Address" value={form.email2}
+                    onChange={v => set('email2', v)} type="email" />
+                </div>
+
                 <div className="col-12">
                   <FormField label="Permanent Address (if different from this unit)"
                     value={form.perm_address} onChange={v => set('perm_address', v)} />

@@ -179,6 +179,9 @@ function saveSubmission(d) {
     d.contact        || '',
     d.whatsapp       || '',
     d.email          || '',
+    d.contact2       || '',
+    d.whatsapp2      || '',
+    d.email2         || '',
     d.perm_address   || '',
     d.occupancy_type || '',
     d.total_occupants|| ''
@@ -383,7 +386,9 @@ function setupSheets() {
 function buildSubmissionHeaders() {
   var headers = [
     'Submitted At', 'Unit Number', 'Block', 'Floor', 'Unit Type', 'Car Park',
-    'Unique ID', 'Occupied Since', 'Owner Name', 'Contact', 'WhatsApp', 'Email',
+    'Unique ID', 'Occupied Since', 'Owner Name',
+    'Primary Contact', 'Primary WhatsApp', 'Primary Email',
+    'Secondary Contact', 'Secondary WhatsApp', 'Secondary Email',
     'Permanent Address', 'Occupancy Type', 'Total Occupants'
   ];
   for (var i = 1; i <= 10; i++) {
