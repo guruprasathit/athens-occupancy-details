@@ -540,7 +540,8 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="col-md-3">
-                  <FormField label="Car Park Slot(s)" value={form.car_park} onChange={v => set('car_park', v)} />
+                  <FormField label="Car Park Slot(s)" value={form.car_park} onChange={v => set('car_park', v)}
+                    placeholder="e.g. B-101, B-102 (comma-separated)" />
                 </div>
                 <div className="col-md-6">
                   <FormField label="Occupied Since (Month & Year) *" value={form.occupied_since}
