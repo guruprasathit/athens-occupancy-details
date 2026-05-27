@@ -36,6 +36,9 @@ function doPost(e) {
     if (body.action === 'batchimport') {
       return json(batchImport(body.units || []));
     }
+    if (body.action === 'uploadfile') {
+      return json(uploadFileToDrive(body));
+    }
     return json({ error: 'Unknown action' });
   } catch (err) {
     return json({ error: err.message });
@@ -196,7 +199,8 @@ function saveSubmission(d) {
     d.has_pets                || '',
     d.membership_completed    || '',
     d.membership_id           || '',
-    d.maintenance_paid_up_to  || ''
+    d.maintenance_paid_up_to  || '',
+    d.sale_deed_urls          || ''
   ]);
 
   // Upsert: find existing row for this unit and overwrite, otherwise append
@@ -400,8 +404,36 @@ function buildSubmissionHeaders() {
     headers.push('Vehicle ' + j + ' Type', 'Vehicle ' + j + ' Make', 'Vehicle ' + j + ' Reg',
                  'Vehicle ' + j + ' Colour', 'Vehicle ' + j + ' Fuel', 'Vehicle ' + j + ' Park');
   }
-  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To');
+  headers.push('Has Pets', 'Membership Completed', 'Membership ID', 'Maintenance Paid Up To', 'Sale Deed URLs');
   return headers;
+}
+
+// ── Upload file to Google Drive ──────────────────────────────────
+// Called via doPost {action:'uploadfile', filename, mimeType, base64, unitNumber}
+
+function uploadFileToDrive(data) {
+  var folderName = 'Athens Occupancy - Sale Deeds';
+  var root       = DriveApp.getRootFolder();
+  var folders    = root.getFoldersByName(folderName);
+  var folder     = folders.hasNext() ? folders.next() : root.createFolder(folderName);
+
+  // Sub-folder per unit (keeps things tidy)
+  var unit        = (data.unitNumber || 'Unknown').toString().replace(/[\/\\:*?"<>|]/g, '_');
+  var unitFolders = folder.getFoldersByName(unit);
+  var unitFolder  = unitFolders.hasNext() ? unitFolders.next() : folder.createFolder(unit);
+
+  var bytes = Utilities.base64Decode(data.base64);
+  var blob  = Utilities.newBlob(bytes, data.mimeType, data.filename);
+  var file  = unitFolder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return {
+    success:  true,
+    fileId:   file.getId(),
+    url:      'https://drive.google.com/file/d/' + file.getId() + '/view',
+    name:     file.getName(),
+    size:     file.getSize()
+  };
 }
 
 // ── Helper ───────────────────────────────────────────────────────
