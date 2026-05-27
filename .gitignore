@@ -7,3 +7,5 @@ service-account-key.json
 scripts/units_ids.csv
 
 .vercel
+
+.env.vercel
