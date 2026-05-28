@@ -677,8 +677,8 @@ export default function Home() {
                     placeholder="e.g. 120, 120A" />
                 </div>
                 <div className="col-md-6">
-                  <FormField label="Occupied Since (Month & Year) *" value={form.occupied_since}
-                    onChange={v => set('occupied_since', v)} placeholder="e.g. Jan 2022" />
+                  <MonthPickerField label="Occupied Since (Month & Year) *" value={form.occupied_since}
+                    onChange={v => set('occupied_since', v)} required />
                 </div>
               </div>
             </SectionCard>
@@ -1109,8 +1109,8 @@ export default function Home() {
                     onChange={v => set('membership_id', v)} />
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Maintenance Paid Up To" value={form.maintenance_paid_up_to}
-                    onChange={v => set('maintenance_paid_up_to', v)} placeholder="e.g. Mar 2025" />
+                  <MonthPickerField label="Maintenance Paid Up To" value={form.maintenance_paid_up_to}
+                    onChange={v => set('maintenance_paid_up_to', v)} />
                 </div>
 
                 {/* Sale Deed Upload */}
@@ -1262,6 +1262,43 @@ function FormField({ label, value, onChange, type = 'text', required, placeholde
         required={required}
         placeholder={placeholder || ''}
         {...rest}
+      />
+    </div>
+  );
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Converts "Jan 2022" → "2022-01" for the native month input
+function toMonthInput(val) {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}$/.test(val)) return val; // already YYYY-MM
+  const parts = val.trim().split(/\s+/);
+  if (parts.length === 2) {
+    const idx = MONTH_NAMES.findIndex(m => m.toLowerCase() === parts[0].toLowerCase());
+    if (idx >= 0) return `${parts[1]}-${String(idx + 1).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+// Converts "2022-01" → "Jan 2022" for storage
+function fromMonthInput(val) {
+  if (!val) return '';
+  const [year, month] = val.split('-');
+  const name = MONTH_NAMES[parseInt(month, 10) - 1];
+  return name ? `${name} ${year}` : val;
+}
+
+function MonthPickerField({ label, value, onChange, required }) {
+  return (
+    <div>
+      <label className={styles.fieldLabel}>{label}</label>
+      <input
+        type="month"
+        className="form-control form-control-sm mt-1"
+        value={toMonthInput(value)}
+        onChange={e => onChange(fromMonthInput(e.target.value))}
+        required={required}
       />
     </div>
   );
