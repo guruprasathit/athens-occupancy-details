@@ -152,8 +152,9 @@ export default function Home() {
     setForm({
       ...initForm(),
       unit_number:            unitUp,
-      block:                  derived.block,
-      floor:                  derived.floor,
+      // Use stored block/floor if present; fall back to values derived from unit number
+      block:                  sub.block  || derived.block,
+      floor:                  sub.floor  || derived.floor,
       unit_type:              sub.unit_type                                || '',
       car_park:               sub.car_park                                 || '',
       unique_id:              sub.unique_id                                || (data && data.unique_id) || '',
@@ -1404,14 +1405,36 @@ function FormField({ label, value, onChange, type = 'text', required, placeholde
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// Parse "Jan 2022" → { month: 'Jan', year: '2022' }
+// Parse a stored month-year value back to { month, year }.
+//
+// Handles three formats that can arrive from Google Sheets:
+//   1. Canonical  : "Jan 2022"  (written by this app)
+//   2. JS Date str: "Sat Jan 01 2022 00:00:00 GMT+0530 (India Standard Time)"
+//                   (Google Sheets auto-converts "Jan 2022" to a Date object;
+//                    Apps Script then serialises it with String(dateObj))
+//   3. Any string containing a 3-letter month name + 4-digit year somewhere
 function parseMonthYear(val) {
   if (!val) return { month: '', year: '' };
-  const parts = val.trim().split(/\s+/);
+  const str = String(val).trim();
+  if (!str) return { month: '', year: '' };
+
+  // Format 1 – exactly "Jan 2022"
+  const parts = str.split(/\s+/);
   if (parts.length === 2) {
     const m = MONTH_NAMES.find(n => n.toLowerCase() === parts[0].toLowerCase());
-    return { month: m || '', year: parts[1] || '' };
+    if (m && /^\d{4}$/.test(parts[1])) return { month: m, year: parts[1] };
   }
+
+  // Formats 2 & 3 – scan for a known month abbreviation + 4-digit year anywhere
+  const monthRe = new RegExp('\\b(' + MONTH_NAMES.join('|') + ')\\b', 'i');
+  const yearRe  = /\b(19\d{2}|20\d{2}|2[1-9]\d{2})\b/;
+  const mMatch  = str.match(monthRe);
+  const yMatch  = str.match(yearRe);
+  if (mMatch && yMatch) {
+    const m = MONTH_NAMES.find(n => n.toLowerCase() === mMatch[1].toLowerCase());
+    if (m) return { month: m, year: yMatch[1] };
+  }
+
   return { month: '', year: '' };
 }
 
