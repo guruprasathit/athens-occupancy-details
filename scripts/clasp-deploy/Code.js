@@ -118,6 +118,34 @@ function lookup(unitNumber) {
   return json({ unit_number: key, block: block, floor: floor, found: false });
 }
 
+// ── Cell-value formatter ──────────────────────────────────────────
+// Google Sheets auto-converts text like "Jan 2022" into a Date object.
+// String(dateObj) → "Sat Jan 01 2022 00:00:00 GMT+0530 …" which breaks
+// the month-picker parser on the frontend.  We detect Date instances and
+// re-format them back to the string the form expects.
+
+var MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Fields whose Date value should be rendered as "MMM yyyy" (e.g. "Jan 2022")
+var MONTH_YEAR_HEADERS = ['Occupied Since', 'Maintenance Paid Up To'];
+
+function formatCellValue(header, value) {
+  if (!(value instanceof Date)) {
+    return (value !== undefined && value !== null) ? String(value) : '';
+  }
+  // It's a Date object — decide which string format to use
+  if (MONTH_YEAR_HEADERS.indexOf(header) >= 0) {
+    // Restore "Jan 2022" format for month-picker fields
+    return MONTH_NAMES_SHORT[value.getMonth()] + ' ' + value.getFullYear();
+  }
+  // All other date columns (Submitted At, pet vacc dates, etc.) → dd/MM/yyyy
+  try {
+    return Utilities.formatDate(value, 'Asia/Kolkata', 'dd/MM/yyyy');
+  } catch (e) {
+    return String(value);
+  }
+}
+
 // ── Fetch saved submission for a unit (primary key = unit number) ─
 
 function getSubmission(unitNumber) {
@@ -136,7 +164,7 @@ function getSubmission(unitNumber) {
       for (var c = 0; c < headers.length; c++) {
         // Convert header "Owner Name" → "owner_name" as the key
         var fieldKey = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
-        obj[fieldKey] = rows[i][c] !== undefined ? String(rows[i][c]) : '';
+        obj[fieldKey] = formatCellValue(String(headers[c]), rows[i][c]);
       }
       return json(obj);
     }
@@ -398,7 +426,7 @@ function getAllSubmissions() {
     var obj = {};
     for (var c = 0; c < headers.length; c++) {
       var key = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
-      obj[key] = rows[i][c] !== undefined ? String(rows[i][c]) : '';
+      obj[key] = formatCellValue(String(headers[c]), rows[i][c]);
     }
     submissions.push(obj);
   }
