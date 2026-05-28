@@ -35,6 +35,7 @@ const EMPTY_TENANT_MEMBER = { age: '', relation: '' };
 const TENANT_RELATIONS = ['', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Other'];
 const EMPTY_VEHICLE   = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
 const VEHICLE_TYPES   = ['', '2 Wheeler', '4 Wheeler'];
+const FUEL_TYPES      = ['', 'Petrol', 'Diesel', 'Electric'];
 const EMPTY_PET     = { name: '', breed: '', age: '', gender: '', vaccinated: '', vacc_date: '', next_vacc_date: '', cert_status: '' };
 const PET_GENDERS   = ['', 'Male', 'Female'];
 const PET_VACC_OPTS = ['', 'Yes', 'No'];
@@ -1002,12 +1003,22 @@ export default function Home() {
                             {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t || '— select —'}</option>)}
                           </select>
                         </td>
-                        {['make', 'reg', 'colour', 'fuel', 'park'].map(f => (
+                        {['make', 'reg', 'colour'].map(f => (
                           <td key={f}>
                             <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
                               value={v[f]} onChange={e => setVehicle(i, f, e.target.value)} />
                           </td>
                         ))}
+                        <td>
+                          <select className={`form-select form-select-sm ${styles.tableInput}`}
+                            value={v.fuel} onChange={e => setVehicle(i, 'fuel', e.target.value)}>
+                            {FUEL_TYPES.map(t => <option key={t} value={t}>{t || '— select —'}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                            value={v.park} onChange={e => setVehicle(i, 'park', e.target.value)} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
