@@ -370,6 +370,8 @@ export default function Home() {
       a.click();
       URL.revokeObjectURL(url);
       setSubmitSuccess(true);
+      setShowForm(false);
+      setTimeout(() => handleClear(), 5000);
     } catch (err) {
       setGenError('Error submitting form: ' + err.message);
     } finally {
@@ -665,6 +667,33 @@ export default function Home() {
               <p className="text-muted mt-3 mb-0" style={{ fontSize: '0.78rem' }}>
                 Enter your <strong>Unique ID</strong> (from your welcome letter / previous form submission).
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Success Screen ─── */}
+        {submitSuccess && (
+          <div className="card shadow-sm border-0 mt-4">
+            <div className="card-body p-5 text-center">
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
+              <h4 className="fw-bold mb-2" style={{ color: '#1B3A6B' }}>
+                Thank you for filling in your details!
+              </h4>
+              <p className="text-muted mb-1">
+                Your information has been saved and your form PDF has been downloaded.
+              </p>
+              <p className="text-muted mb-4">
+                You have taken an important step towards building a{' '}
+                <strong>safe and secure gateway community</strong> at Casagrand Athens.
+              </p>
+              <p className="small text-muted mb-3">Returning to home page in a few seconds…</p>
+              <button
+                type="button"
+                className="btn btn-outline-primary px-4"
+                onClick={handleClear}
+              >
+                ← Back to Home
+              </button>
             </div>
           </div>
         )}
@@ -1323,18 +1352,6 @@ export default function Home() {
             {/* ─── Generate Button ─── */}
             {genError && (
               <div className="alert alert-danger small mt-2">{genError}</div>
-            )}
-            {submitSuccess && (
-              <div className="alert alert-success mt-2 py-3 px-4">
-                <div className="fw-bold mb-1" style={{ fontSize: '1rem' }}>
-                  🎉 Thank you for filling in your details!
-                </div>
-                <div className="small">
-                  Your information has been saved and your form PDF has been downloaded. You have
-                  taken an important step towards building a <strong>safe and secure gateway
-                  community</strong> at Casagrand Athens.
-                </div>
-              </div>
             )}
             <div className="d-flex justify-content-end gap-3 mt-4 pb-4 flex-wrap">
               <button type="button" className="btn btn-outline-secondary" onClick={handleClear}>
