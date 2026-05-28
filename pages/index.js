@@ -84,6 +84,9 @@ export default function Home() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [genError, setGenError] = useState('');
 
+  // ── Association membership "No" warning popup ──────────────────────────────
+  const [showMembershipMsg, setShowMembershipMsg] = useState(false);
+
   // ── Identity verification (shown when a saved submission already exists) ──────
   const [verificationStep, setVerificationStep] = useState(false);
   const [verifyInput, setVerifyInput]     = useState('');
@@ -378,9 +381,20 @@ export default function Home() {
 
   const handleSubmitAndDownload = async (e) => {
     e.preventDefault();
-    setGenerating(true);
+    setGenerating(false);
     setSubmitSuccess(false);
     setGenError('');
+
+    // Sale Deed is mandatory — must have at least one successfully uploaded file
+    const uploadedDeeds = (form.sale_deeds || []).filter(
+      f => f.status === 'done' || f.status === 'saved'
+    );
+    if (uploadedDeeds.length === 0) {
+      setGenError('Sale Deed upload is required. Please upload at least one page of the Sale Deed before submitting.');
+      return;
+    }
+
+    setGenerating(true);
     try {
       const res = await fetch('/api/submit-and-download', {
         method: 'POST',
@@ -722,6 +736,45 @@ export default function Home() {
                 onClick={handleClear}
               >
                 ← Back to Home
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Membership "No" warning popup ─── */}
+        {showMembershipMsg && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setShowMembershipMsg(false)}
+          >
+            <div
+              style={{
+                background: '#fff', borderRadius: 12, padding: '2rem',
+                maxWidth: 420, width: '100%', textAlign: 'center',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚠️</div>
+              <h5 className="fw-bold mb-2" style={{ color: '#1B3A6B' }}>
+                Not registered in the association yet?
+              </h5>
+              <p className="text-muted mb-3" style={{ fontSize: '0.95rem' }}>
+                Please contact the <strong>Block Secretaries</strong> to complete
+                your association membership registration.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary px-4"
+                style={{ background: '#1B3A6B', borderColor: '#1B3A6B' }}
+                onClick={() => setShowMembershipMsg(false)}
+              >
+                OK, Got It
               </button>
             </div>
           </div>
@@ -1274,7 +1327,10 @@ export default function Home() {
                         <input className="form-check-input" type="radio" id={`mem_${opt}`}
                           name="membership_completed" value={opt.toLowerCase()}
                           checked={form.membership_completed === opt.toLowerCase()}
-                          onChange={() => set('membership_completed', opt.toLowerCase())} />
+                          onChange={() => {
+                            set('membership_completed', opt.toLowerCase());
+                            if (opt.toLowerCase() === 'no') setShowMembershipMsg(true);
+                          }} />
                         <label className="form-check-label" htmlFor={`mem_${opt}`}>{opt}</label>
                       </div>
                     ))}
@@ -1292,9 +1348,9 @@ export default function Home() {
                 {/* Sale Deed Upload */}
                 <div className="col-12 mt-2">
                   <label className={styles.fieldLabel}>
-                    Sale Deed Upload &nbsp;
+                    Sale Deed Upload * &nbsp;
                     <span style={{ fontWeight: 400, color: '#6c757d', fontSize: '0.78rem' }}>
-                      Please upload the first eight pages of the Sale Deed
+                      Please upload the first eight pages of the Sale Deed (required)
                     </span>
                   </label>
                   <div className="mt-2 p-3 rounded"
