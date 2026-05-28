@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -19,11 +19,8 @@ export default function Admin() {
   const [deleting, setDeleting]         = useState(null);   // unit number currently being deleted
   const [deleteError, setDeleteError]   = useState('');
 
-  // ── Restore session on page load ────────────────────────────────
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' && sessionStorage.getItem('admin_token');
-    if (saved) { setToken(saved); fetchSubmissions(saved); }
-  }, []);
+  // Session is intentionally NOT restored on page load —
+  // password is required every time the admin page is visited.
 
   // ── Fetch all submissions ────────────────────────────────────────
   const fetchSubmissions = useCallback(async (tok) => {
@@ -61,7 +58,6 @@ export default function Admin() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-      sessionStorage.setItem('admin_token', data.token);
       setToken(data.token);
       fetchSubmissions(data.token);
     } catch (err) {
@@ -94,7 +90,6 @@ export default function Admin() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('admin_token');
     setToken('');
     setSubmissions([]);
     setSearch('');
