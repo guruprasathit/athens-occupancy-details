@@ -45,7 +45,7 @@ function initForm() {
     unit_number: '', block: '', floor: '', unit_type: '', car_park: '', unique_id: '', occupied_since: '',
     owner_name: '', contact: '', whatsapp: '', email: '',
     contact2: '', whatsapp2: '', email2: '',
-    perm_address: '',
+    perm_address_type: '', perm_address: '',
     occupancy_type: '', total_occupants: '',
     members: Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
     tenant_name: '', tenant_age: '', tenant_contact: '', tenant_email: '',
@@ -168,6 +168,7 @@ export default function Home() {
       email2:                 sub.secondary_email    || sub.email2         || '',
       // "Permanent Address" → permanent_address; fallback if old sheet used perm_address
       perm_address:           sub.permanent_address || sub.perm_address    || '',
+      perm_address_type:      (sub.permanent_address || sub.perm_address) ? 'different' : 'same',
       // occupancy_type stored as lowercase ('owner','tenant','vacant') — keep as-is
       occupancy_type:         sub.occupancy_type                           || '',
       total_occupants:        sub.total_occupants                          || '',
@@ -744,8 +745,32 @@ export default function Home() {
                 </div>
 
                 <div className="col-12">
-                  <FormField label="Permanent Address (if different from this unit)"
-                    value={form.perm_address} onChange={v => set('perm_address', v)} />
+                  <label className={styles.fieldLabel}>Permanent Address</label>
+                  <div className="d-flex gap-4 mt-1 mb-2">
+                    <div className="form-check">
+                      <input className="form-check-input" type="radio" id="perm_same"
+                        name="perm_address_type" value="same"
+                        checked={form.perm_address_type === 'same'}
+                        onChange={() => set('perm_address_type', 'same')} />
+                      <label className="form-check-label" htmlFor="perm_same">Same as this unit</label>
+                    </div>
+                    <div className="form-check">
+                      <input className="form-check-input" type="radio" id="perm_different"
+                        name="perm_address_type" value="different"
+                        checked={form.perm_address_type === 'different'}
+                        onChange={() => { set('perm_address_type', 'different'); }} />
+                      <label className="form-check-label" htmlFor="perm_different">Different</label>
+                    </div>
+                  </div>
+                  {form.perm_address_type === 'different' && (
+                    <textarea
+                      className="form-control form-control-sm"
+                      rows={3}
+                      placeholder="Enter permanent address"
+                      value={form.perm_address}
+                      onChange={e => set('perm_address', e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
             </SectionCard>
