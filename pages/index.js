@@ -1301,7 +1301,7 @@ export default function Home() {
                         </ul>
                       )}
 
-                      {(form.pet_vacc_docs || []).length < 5 && (
+                      {(form.pet_vacc_docs || []).length < 4 && (
                         <label className="btn btn-sm btn-outline-primary mb-0" style={{ cursor: 'pointer' }}>
                           + Add File
                           <input type="file" hidden multiple
