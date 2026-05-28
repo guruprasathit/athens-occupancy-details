@@ -39,6 +39,7 @@ const FUEL_TYPES      = ['', 'Petrol', 'Diesel', 'Electric'];
 const EMPTY_PET     = { name: '', breed: '', age: '', gender: '', vaccinated: '', vacc_date: '', next_vacc_date: '', cert_status: '' };
 const PET_GENDERS   = ['', 'Male', 'Female'];
 const PET_VACC_OPTS = ['', 'Yes', 'No'];
+const PET_CERT_STATUS_OPTS = ['', 'Certificate Obtained', 'Applied / In Progress', 'Not Yet Applied', 'Certificate Expired', 'Not Applicable'];
 
 function initForm() {
   return {
@@ -1250,8 +1251,10 @@ export default function Home() {
                                 placeholder="dd/mm/yyyy" />
                             </td>
                             <td>
-                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
-                                value={p.cert_status} onChange={e => setPet(i, 'cert_status', e.target.value)} />
+                              <select className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={p.cert_status} onChange={e => setPet(i, 'cert_status', e.target.value)}>
+                                {PET_CERT_STATUS_OPTS.map(o => <option key={o} value={o}>{o || '— select —'}</option>)}
+                              </select>
                             </td>
                           </tr>
                         ))}
