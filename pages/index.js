@@ -365,8 +365,8 @@ export default function Home() {
 
   // ── Tenant agreement upload (reuses same API, different docType / stateKey) ──
 
-  // Max file size: 3 MB (base64 adds ~33% overhead; Vercel serverless limit is 4.5 MB)
-  const MAX_FILE_BYTES = 3 * 1024 * 1024;
+  // Max file size: 5 MB
+  const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
   const makeFileHandler = (stateKey, docType) => async (e) => {
     const files = Array.from(e.target.files || []);
@@ -887,7 +887,7 @@ export default function Home() {
                     )}
 
                     <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                      Up to 5 files · PDF or image · Max 3 MB per file
+                      Upload PDF or image · Max 5 MB per file
                     </p>
                   </div>
                 </div>
@@ -1064,7 +1064,7 @@ export default function Home() {
                       )}
 
                       <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                        Up to 5 files · PDF or image · Max 3 MB per file
+                        Upload PDF or image · Max 5 MB per file
                       </p>
                     </div>
                   </div>
@@ -1149,7 +1149,7 @@ export default function Home() {
                     )}
 
                     <p className="mb-0 mt-2 text-muted" style={{ fontSize: '0.75rem' }}>
-                      Up to 5 files · PDF or image · Max 3 MB per file
+                      Upload PDF or image · Max 5 MB per file
                     </p>
                   </div>
                 </div>
