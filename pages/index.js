@@ -1269,37 +1269,54 @@ function FormField({ label, value, onChange, type = 'text', required, placeholde
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// Converts "Jan 2022" → "2022-01" for the native month input
-function toMonthInput(val) {
-  if (!val) return '';
-  if (/^\d{4}-\d{2}$/.test(val)) return val; // already YYYY-MM
+// Parse "Jan 2022" → { month: 'Jan', year: '2022' }
+function parseMonthYear(val) {
+  if (!val) return { month: '', year: '' };
   const parts = val.trim().split(/\s+/);
   if (parts.length === 2) {
-    const idx = MONTH_NAMES.findIndex(m => m.toLowerCase() === parts[0].toLowerCase());
-    if (idx >= 0) return `${parts[1]}-${String(idx + 1).padStart(2, '0')}`;
+    const m = MONTH_NAMES.find(n => n.toLowerCase() === parts[0].toLowerCase());
+    return { month: m || '', year: parts[1] || '' };
   }
-  return '';
-}
-
-// Converts "2022-01" → "Jan 2022" for storage
-function fromMonthInput(val) {
-  if (!val) return '';
-  const [year, month] = val.split('-');
-  const name = MONTH_NAMES[parseInt(month, 10) - 1];
-  return name ? `${name} ${year}` : val;
+  return { month: '', year: '' };
 }
 
 function MonthPickerField({ label, value, onChange, required }) {
+  const { month: selMonth, year: selYear } = parseMonthYear(value);
+
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = 1990; y <= currentYear + 2; y++) years.push(y);
+
+  const handleChange = (newMonth, newYear) => {
+    if (newMonth && newYear) onChange(`${newMonth} ${newYear}`);
+    else onChange('');
+  };
+
   return (
     <div>
       <label className={styles.fieldLabel}>{label}</label>
-      <input
-        type="month"
-        className="form-control form-control-sm mt-1"
-        value={toMonthInput(value)}
-        onChange={e => onChange(fromMonthInput(e.target.value))}
-        required={required}
-      />
+      <div className="d-flex gap-2 mt-1">
+        <select
+          className="form-select form-select-sm"
+          value={selMonth}
+          onChange={e => handleChange(e.target.value, selYear)}
+          required={required && !selYear}
+          style={{ flex: 1 }}
+        >
+          <option value="">Month</option>
+          {MONTH_NAMES.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select
+          className="form-select form-select-sm"
+          value={selYear}
+          onChange={e => handleChange(selMonth, e.target.value)}
+          required={required && !selMonth}
+          style={{ flex: 1 }}
+        >
+          <option value="">Year</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
     </div>
   );
 }
