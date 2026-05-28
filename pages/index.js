@@ -138,6 +138,15 @@ export default function Home() {
     // Helper: normalise Yes/No/yes/no stored values to lowercase for radio buttons
     const lc = v => String(v || '').toLowerCase();
 
+    // Helper: normalise occupancy_type — handles 'Owner', 'Owner Occupied', 'owner', etc.
+    const normalizeOccupancy = v => {
+      const s = lc(v);
+      if (s === 'owner' || s === 'owner occupied' || s === 'owner-occupied' || s === 'owned') return 'owner';
+      if (s === 'tenant' || s === 'tenant occupied' || s === 'tenant-occupied' || s === 'rented' || s === 'let out') return 'tenant';
+      if (s === 'vacant' || s === 'empty' || s === 'unoccupied' || s === 'not occupied') return 'vacant';
+      return s; // already 'owner'/'tenant'/'vacant' or empty
+    };
+
     // Helper: try multiple URL key names, return first non-empty list
     const urlListAny = (...keys) => {
       for (const k of keys) {
@@ -145,6 +154,14 @@ export default function Home() {
         if (r.length) return r;
       }
       return [];
+    };
+
+    // Helper: read a doc-checkbox field — tries both "Doc: X" style key (new sheet)
+    // and plain key without colon (old sheet where header had no colon).
+    // Accepts 'yes', 'Yes', 'YES', 'true', 'True' (handles old boolean-string storage).
+    const docVal = (colonKey, plainKey) => {
+      const v = lc(sub[colonKey] || sub[plainKey] || '');
+      return v === 'yes' || v === 'true';
     };
 
     const unitUp = (sub.unit_number || unit || '').toUpperCase();
@@ -169,10 +186,11 @@ export default function Home() {
       email2:                 sub.secondary_email    || sub.email2         || '',
       // "Permanent Address" → permanent_address; fallback if old sheet used perm_address
       perm_address:           sub.permanent_address || sub.perm_address    || '',
-      perm_address_type:      sub.permanent_address_type ||
-                              ((sub.permanent_address || sub.perm_address) ? 'different' : 'same'),
-      // occupancy_type stored as lowercase ('owner','tenant','vacant') — keep as-is
-      occupancy_type:         sub.occupancy_type                           || '',
+      // Default to '' (unselected) when address type is not stored — don't assume 'same'
+      perm_address_type:      sub.permanent_address_type || sub.perm_address_type ||
+                              ((sub.permanent_address || sub.perm_address) ? 'different' : ''),
+      // occupancy_type: normalise case + handle old format variants ('Owner Occupied' etc.)
+      occupancy_type:         normalizeOccupancy(sub.occupancy_type),
       total_occupants:        sub.total_occupants                          || '',
       members,
       tenant_name:            sub.tenant_name                              || '',
@@ -199,11 +217,13 @@ export default function Home() {
       tenant_docs:   urlListAny('tenant_agreement_urls',  'tenant_doc_urls'),
       pet_vacc_docs: urlListAny('pet_vaccination_urls',   'pet_vacc_doc_urls'),
       pets,
-      // Sheet headers "Doc: Sale Deed" / "Doc: Tenant Agreement" / "Doc: Pet Certificate"
-      // Apps Script: .toLowerCase().replace(/\s+/g,'_') → colon kept → "doc:_sale_deed"
-      doc_sale_deed:        lc(sub['doc:_sale_deed'])        === 'yes',
-      doc_tenant_agreement: lc(sub['doc:_tenant_agreement']) === 'yes',
-      doc_pet_cert:         lc(sub['doc:_pet_certificate'])  === 'yes',
+      // Doc checkboxes:
+      // New sheet header "Doc: Sale Deed" → Apps Script key "doc:_sale_deed"
+      // Old sheet header "Doc Sale Deed"  → Apps Script key "doc_sale_deed" (no colon)
+      // docVal() tries both variants so old and new data both work.
+      doc_sale_deed:        docVal('doc:_sale_deed',        'doc_sale_deed'),
+      doc_tenant_agreement: docVal('doc:_tenant_agreement', 'doc_tenant_agreement'),
+      doc_pet_cert:         docVal('doc:_pet_certificate',  'doc_pet_cert'),
       date: new Date().toLocaleDateString('en-IN'),
     });
     setSubmissionLoaded(true);
@@ -246,6 +266,14 @@ export default function Home() {
         // Unit found in database, no prior submission — show blank form
         const unitUp = (data.unit_number || unit || '').toUpperCase();
         const derived = deriveBlockFloor(unitUp);
+        // Normalise occupancy_type from Units sheet ('Owner', 'Owner Occupied', etc.)
+        const normalizeOcc = v => {
+          const s = String(v || '').toLowerCase().trim();
+          if (s === 'owner' || s.startsWith('owner')) return 'owner';
+          if (s === 'tenant' || s.startsWith('tenant') || s === 'rented') return 'tenant';
+          if (s === 'vacant' || s === 'empty') return 'vacant';
+          return s;
+        };
         setForm({
           ...initForm(),
           unit_number:    unitUp,
@@ -261,7 +289,7 @@ export default function Home() {
           contact2:       '',
           whatsapp2:      '',
           email2:         '',
-          occupancy_type: data.occupancy_type || '',
+          occupancy_type: normalizeOcc(data.occupancy_type),
           date:           new Date().toLocaleDateString('en-IN'),
           members:        Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
           vehicles:       Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
