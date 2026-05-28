@@ -698,16 +698,16 @@ export default function Home() {
                   </label>
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Contact No." value={form.contact}
-                    onChange={v => set('contact', v)} type="tel" />
+                  <FormField label="Contact No. *" value={form.contact}
+                    onChange={v => set('contact', v)} type="tel" required />
                 </div>
                 <div className="col-md-4">
-                  <FormField label="WhatsApp No." value={form.whatsapp}
-                    onChange={v => set('whatsapp', v)} type="tel" />
+                  <FormField label="WhatsApp No. *" value={form.whatsapp}
+                    onChange={v => set('whatsapp', v)} type="tel" required />
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Email Address" value={form.email}
-                    onChange={v => set('email', v)} type="email" />
+                  <FormField label="Email Address *" value={form.email}
+                    onChange={v => set('email', v)} type="email" required />
                 </div>
 
                 {/* Secondary contact row */}
