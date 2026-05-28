@@ -157,17 +157,24 @@ function getSubmission(unitNumber) {
   var headers = rows[0];
   var key     = String(unitNumber).replace(/[\s\-]/g, '').toUpperCase();
 
+  // Scan ALL rows and keep the LAST match — handles duplicate rows by returning
+  // the most recent submission instead of the oldest one.
+  var matchRow = -1;
   for (var i = 1; i < rows.length; i++) {
     var rowUnit = String(rows[i][1]).replace(/[\s\-]/g, '').toUpperCase(); // col B = Unit Number
     if (rowUnit === key) {
-      var obj = { found: true };
-      for (var c = 0; c < headers.length; c++) {
-        // Convert header "Owner Name" → "owner_name" as the key
-        var fieldKey = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
-        obj[fieldKey] = formatCellValue(String(headers[c]), rows[i][c]);
-      }
-      return json(obj);
+      matchRow = i; // keep updating — last match wins
     }
+  }
+
+  if (matchRow >= 0) {
+    var obj = { found: true };
+    for (var c = 0; c < headers.length; c++) {
+      // Convert header "Owner Name" → "owner_name" as the key
+      var fieldKey = headers[c].toString().toLowerCase().replace(/\s+/g, '_');
+      obj[fieldKey] = formatCellValue(String(headers[c]), rows[matchRow][c]);
+    }
+    return json(obj);
   }
 
   return json({ found: false });
@@ -268,14 +275,21 @@ function saveSubmission(d) {
     d.doc_pet_cert            ? 'Yes' : 'No'
   ]);
 
-  // Upsert: find existing row for this unit and overwrite, otherwise append
+  // Upsert: find the LAST existing row for this unit and overwrite it.
+  // Using the last row handles any duplicate-row scenario by always updating
+  // the most recent entry rather than an old/stale one.
   var rows = sheet.getDataRange().getValues();
+  var matchRow = -1;
   for (var r = 1; r < rows.length; r++) {
     var existingUnit = String(rows[r][1]).replace(/[\s\-]/g, '').toUpperCase();
     if (existingUnit === key) {
-      sheet.getRange(r + 1, 1, 1, row.length).setValues([row]);
-      return { success: true, action: 'updated', row: r + 1 };
+      matchRow = r; // keep updating — last match wins
     }
+  }
+
+  if (matchRow >= 0) {
+    sheet.getRange(matchRow + 1, 1, 1, row.length).setValues([row]);
+    return { success: true, action: 'updated', row: matchRow + 1 };
   }
 
   sheet.appendRow(row);
@@ -551,12 +565,19 @@ function deleteSubmission(unitNumber) {
   var key  = String(unitNumber).replace(/[\s\-]/g, '').toUpperCase();
   var rows = sheet.getDataRange().getValues();
 
+  // Delete the LAST matching row (most recent submission).
+  // Scan the full list first, then delete once — avoids index shifting mid-loop.
+  var matchRow = -1;
   for (var i = 1; i < rows.length; i++) {
     var rowUnit = String(rows[i][1]).replace(/[\s\-]/g, '').toUpperCase(); // col B = Unit Number
     if (rowUnit === key) {
-      sheet.deleteRow(i + 1); // sheet rows are 1-based; +1 because rows[0] is header
-      return { success: true, deleted: unitNumber, row: i + 1 };
+      matchRow = i; // keep updating — last match wins
     }
+  }
+
+  if (matchRow >= 0) {
+    sheet.deleteRow(matchRow + 1); // sheet rows are 1-based; +1 because rows[0] is header
+    return { success: true, deleted: unitNumber, row: matchRow + 1 };
   }
 
   return { success: false, error: 'No submission found for unit ' + unitNumber };
