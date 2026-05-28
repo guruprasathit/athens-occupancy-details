@@ -31,7 +31,7 @@ const RELATIONS  = [
   'Other',
 ];
 const EMPTY_MEMBER = { name: '', age: '', relation: '' };
-const EMPTY_TENANT_MEMBER = { age: '', relation: '' };
+const EMPTY_TENANT_MEMBER = { name: '', age: '', relation: '' };
 const TENANT_RELATIONS = ['', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Other'];
 const EMPTY_VEHICLE   = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
 const VEHICLE_TYPES   = ['', '2 Wheeler', '4 Wheeler'];
@@ -178,6 +178,7 @@ export default function Home() {
       tenant_contact:         sub.tenant_contact                           || '',
       tenant_email:           sub.tenant_email                             || '',
       tenant_members:         Array(6).fill(null).map((_, i) => ({
+        name:     sub[`tenant_member_${i + 1}_name`]     || '',
         age:      sub[`tenant_member_${i + 1}_age`]      || '',
         relation: sub[`tenant_member_${i + 1}_relation`] || '',
       })),
@@ -505,6 +506,7 @@ export default function Home() {
       payload[`pet_${i + 1}_cert_status`]   = p.cert_status;
     });
     (form.tenant_members || []).forEach((m, i) => {
+      payload[`tenant_member_${i + 1}_name`]     = m.name;
       payload[`tenant_member_${i + 1}_age`]      = m.age;
       payload[`tenant_member_${i + 1}_relation`] = m.relation;
     });
@@ -800,6 +802,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {form.occupancy_type !== 'tenant' && (<>
               <div className={styles.membersHeader}>
                 MEMBERS — Name, Age &amp; Relation (up to 10)
               </div>
@@ -840,6 +843,7 @@ export default function Home() {
                   </tbody>
                 </table>
               </div>
+              </>)}
             </SectionCard>
 
             {/* 04 — Tenant Details (only when Tenant Occupied) */}
@@ -960,36 +964,46 @@ export default function Home() {
                     Tenant Family Members (up to 6)
                   </label>
                   <div className="table-responsive mt-2">
-                    <table className="table table-sm mb-0">
+                    <table className="table table-sm mb-0" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                       <thead>
                         <tr className={styles.membersThead}>
-                          <th style={{ width: 40 }}>#</th>
-                          <th>Age Range</th>
-                          <th>Relation to Tenant</th>
+                          <th style={{ width: '4%' }}>#</th>
+                          <th style={{ width: '38%' }}>Name</th>
+                          <th style={{ width: '28%' }}>Age Range</th>
+                          <th style={{ width: '30%' }}>Relation to Tenant</th>
                         </tr>
                       </thead>
                       <tbody>
                         {form.tenant_members.map((m, i) => (
-                          <tr key={i}>
-                            <td className="text-muted">{i + 1}</td>
+                          <tr key={i} className={styles.memberRow}>
+                            <td className="text-muted small align-middle">{i + 1}</td>
                             <td>
-                              <select className="form-select form-select-sm"
+                              <input type="text" className={`form-control form-control-sm ${styles.tableInput}`}
+                                value={m.name}
+                                onChange={e => {
+                                  const updated = form.tenant_members.map((r, j) => j === i ? { ...r, name: e.target.value } : r);
+                                  set('tenant_members', updated);
+                                }}
+                                placeholder="" />
+                            </td>
+                            <td>
+                              <select className={`form-select form-select-sm ${styles.tableInput}`}
                                 value={m.age}
                                 onChange={e => {
                                   const updated = form.tenant_members.map((r, j) => j === i ? { ...r, age: e.target.value } : r);
                                   set('tenant_members', updated);
                                 }}>
-                                {AGE_RANGES.map(a => <option key={a} value={a}>{a || '—'}</option>)}
+                                {AGE_RANGES.map(a => <option key={a} value={a}>{a || '— select —'}</option>)}
                               </select>
                             </td>
                             <td>
-                              <select className="form-select form-select-sm"
+                              <select className={`form-select form-select-sm ${styles.tableInput}`}
                                 value={m.relation}
                                 onChange={e => {
                                   const updated = form.tenant_members.map((r, j) => j === i ? { ...r, relation: e.target.value } : r);
                                   set('tenant_members', updated);
                                 }}>
-                                {TENANT_RELATIONS.map(r => <option key={r} value={r}>{r || '—'}</option>)}
+                                {TENANT_RELATIONS.map(r => <option key={r} value={r}>{r || '— select —'}</option>)}
                               </select>
                             </td>
                           </tr>
