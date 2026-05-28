@@ -58,6 +58,15 @@ function initForm() {
   };
 }
 
+// Derive Block/Tower and Floor from unit number pattern (e.g. "A1201" → block "A", floor "12")
+function deriveBlockFloor(unit) {
+  const u = (unit || '').toUpperCase().trim();
+  return {
+    block: u.length >= 1 ? u[0] : '',
+    floor: u.length >= 3 ? u.slice(1, 3) : (u.length >= 2 ? u[1] : ''),
+  };
+}
+
 export default function Home() {
   const router = useRouter();
   const [unitInput, setUnitInput] = useState('');
@@ -132,11 +141,13 @@ export default function Home() {
       return [];
     };
 
+    const unitUp = (sub.unit_number || unit || '').toUpperCase();
+    const derived = deriveBlockFloor(unitUp);
     setForm({
       ...initForm(),
-      unit_number:            sub.unit_number                              || (unit || '').toUpperCase(),
-      block:                  sub.block                                    || '',
-      floor:                  sub.floor                                    || '',
+      unit_number:            unitUp,
+      block:                  derived.block,
+      floor:                  derived.floor,
       unit_type:              sub.unit_type                                || '',
       car_park:               sub.car_park                                 || '',
       unique_id:              sub.unique_id                                || (data && data.unique_id) || '',
@@ -218,11 +229,13 @@ export default function Home() {
         setVerificationStep(true);
       } else {
         // Unit found in database, no prior submission — show blank form
+        const unitUp = (data.unit_number || unit || '').toUpperCase();
+        const derived = deriveBlockFloor(unitUp);
         setForm({
           ...initForm(),
-          unit_number:    data.unit_number    || unit.toUpperCase(),
-          block:          data.block          || '',
-          floor:          data.floor          || '',
+          unit_number:    unitUp,
+          block:          derived.block,
+          floor:          derived.floor,
           unit_type:      data.unit_type      || '',
           car_park:       data.car_park       || '',
           unique_id:      data.unique_id      || '',
