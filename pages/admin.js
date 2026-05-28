@@ -18,6 +18,7 @@ export default function Admin() {
   const [exporting, setExporting]       = useState(false);
   const [deleting, setDeleting]         = useState(null);   // unit number currently being deleted
   const [deleteError, setDeleteError]   = useState('');
+  const [selectedSub, setSelectedSub]   = useState(null);   // submission open in detail modal
 
   // Session is intentionally NOT restored on page load —
   // password is required every time the admin page is visited.
@@ -337,6 +338,12 @@ export default function Admin() {
                         <td>
                           <div className="d-flex gap-1">
                             <button
+                              className={styles.btnDetails}
+                              onClick={() => setSelectedSub(s)}
+                            >
+                              Details
+                            </button>
+                            <button
                               className={styles.btnEdit}
                               onClick={() => router.push(`/?unit=${encodeURIComponent(s.unit_number)}`)}
                             >
@@ -367,6 +374,402 @@ export default function Admin() {
           Showing {filtered.length} of {submissions.length} submissions
         </p>
       </div>
+
+      {/* ─── Detail Modal ─── */}
+      {selectedSub && (
+        <DetailModal sub={selectedSub} onClose={() => setSelectedSub(null)} />
+      )}
     </>
+  );
+}
+
+// ── Detail Modal ──────────────────────────────────────────────────────────────
+
+function DetailModal({ sub: s, onClose }) {
+  // Read a value trying multiple fallback key names
+  const get = (...keys) => keys.reduce((acc, k) => acc || s[k] || '', '');
+
+  // Doc checkbox — supports colon-key (new) and plain-key (old sheet)
+  const docYes = (k1, k2) => {
+    const v = (s[k1] || s[k2] || '').toLowerCase();
+    return v === 'yes' || v === 'true';
+  };
+
+  const members = Array.from({ length: 10 }, (_, i) => ({
+    num: i + 1,
+    name:     s[`member_${i+1}_name`]     || '',
+    age:      s[`member_${i+1}_age`]      || '',
+    relation: s[`member_${i+1}_relation`] || '',
+  })).filter(m => m.name || m.age || m.relation);
+
+  const tenantMembers = Array.from({ length: 6 }, (_, i) => ({
+    num: i + 1,
+    name:     s[`tenant_member_${i+1}_name`]     || '',
+    age:      s[`tenant_member_${i+1}_age`]      || '',
+    relation: s[`tenant_member_${i+1}_relation`] || '',
+  })).filter(m => m.name);
+
+  const vehicles = Array.from({ length: 5 }, (_, i) => ({
+    num:    i + 1,
+    type:   s[`vehicle_${i+1}_type`]   || '',
+    make:   s[`vehicle_${i+1}_make`]   || '',
+    reg:    s[`vehicle_${i+1}_reg`]    || '',
+    colour: s[`vehicle_${i+1}_colour`] || '',
+    fuel:   s[`vehicle_${i+1}_fuel`]   || '',
+    park:   s[`vehicle_${i+1}_park`]   || '',
+  })).filter(v => v.type || v.make || v.reg);
+
+  const pets = Array.from({ length: 5 }, (_, i) => ({
+    num:        i + 1,
+    name:       s[`pet_${i+1}_name`]          || '',
+    breed:      s[`pet_${i+1}_breed`]         || '',
+    age:        s[`pet_${i+1}_age`]           || '',
+    gender:     s[`pet_${i+1}_gender`]        || '',
+    vaccinated: s[`pet_${i+1}_vaccinated`]    || '',
+    vacDate:    s[`pet_${i+1}_last_vacc_date`]|| '',
+    nextDate:   s[`pet_${i+1}_next_due_date`] || '',
+    cert:       s[`pet_${i+1}_cert_status`]   || '',
+  })).filter(p => p.name);
+
+  const occBg    = s.occupancy_type === 'owner'  ? '#d1f5ea'
+                 : s.occupancy_type === 'tenant' ? '#fff3cd' : '#f1f3f5';
+  const occColor = s.occupancy_type === 'owner'  ? '#0a6640'
+                 : s.occupancy_type === 'tenant' ? '#7d5a00' : '#555';
+
+  // Small row: label + value
+  const Row = ({ label, value }) =>
+    value ? (
+      <div className="d-flex gap-2 mb-1" style={{ fontSize: '0.875rem' }}>
+        <span style={{ color: '#6c757d', minWidth: 170, flexShrink: 0 }}>{label}</span>
+        <span style={{ fontWeight: 500, color: '#1a1a1a', wordBreak: 'break-word' }}>{value}</span>
+      </div>
+    ) : null;
+
+  // Section block with title divider
+  const Section = ({ title, children }) => (
+    <div style={{ marginBottom: '1.25rem' }}>
+      <div style={{
+        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.09em',
+        color: '#1B3A6B', textTransform: 'uppercase',
+        borderBottom: '1.5px solid #b8c9e0', paddingBottom: '0.3rem', marginBottom: '0.6rem',
+      }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  // Mini table header style
+  const th = { fontWeight: 600, fontSize: '0.78rem', background: '#eef3fb',
+               padding: '5px 8px', borderBottom: '1px solid #dde6f3' };
+  const td = { fontSize: '0.82rem', padding: '5px 8px', borderBottom: '1px solid #f0f0f0' };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        padding: '1.5rem 1rem', overflowY: 'auto',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 14, width: '100%', maxWidth: 900,
+          boxShadow: '0 12px 48px rgba(0,0,0,0.22)', flexShrink: 0,
+          marginBottom: '1.5rem',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Modal Header ── */}
+        <div style={{
+          background: '#1B3A6B', color: '#fff', borderRadius: '14px 14px 0 0',
+          padding: '0.9rem 1.25rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem',
+        }}>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Unit {s.unit_number}</span>
+            {s.occupancy_type && (
+              <span style={{
+                background: occBg, color: occColor,
+                padding: '2px 10px', borderRadius: 20,
+                fontSize: '0.73rem', fontWeight: 700, textTransform: 'capitalize',
+              }}>{s.occupancy_type}</span>
+            )}
+            <span style={{ opacity: 0.85, fontSize: '0.92rem' }}>{s.owner_name || ''}</span>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+            borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
+            fontSize: '0.88rem', fontWeight: 600, flexShrink: 0,
+          }}>✕ Close</button>
+        </div>
+
+        {/* ── Modal Body ── */}
+        <div style={{ padding: '1.25rem 1.5rem' }}>
+
+          {/* 1 — Unit Information */}
+          <Section title="Unit Information">
+            <div className="row g-0">
+              <div className="col-md-6">
+                <Row label="Unit Number"    value={s.unit_number} />
+                <Row label="Block / Tower"  value={s.block} />
+                <Row label="Floor"          value={s.floor} />
+                <Row label="Unit Type"      value={s.unit_type} />
+              </div>
+              <div className="col-md-6">
+                <Row label="Car Park Slot"  value={s.car_park} />
+                <Row label="Unique ID"      value={s.unique_id} />
+                <Row label="Occupied Since" value={s.occupied_since} />
+                <Row label="Last Submitted" value={s.submitted_at} />
+              </div>
+            </div>
+          </Section>
+
+          {/* 2 — Owner Details */}
+          <Section title="Owner Details">
+            <div className="row g-0">
+              <div className="col-md-6">
+                <Row label="Owner Name"         value={s.owner_name} />
+                <Row label="Primary Contact"    value={get('primary_contact','contact')} />
+                <Row label="Primary WhatsApp"   value={get('primary_whatsapp','whatsapp')} />
+                <Row label="Primary Email"      value={get('primary_email','email')} />
+              </div>
+              <div className="col-md-6">
+                <Row label="Secondary Contact"  value={get('secondary_contact','contact2')} />
+                <Row label="Secondary WhatsApp" value={get('secondary_whatsapp','whatsapp2')} />
+                <Row label="Secondary Email"    value={get('secondary_email','email2')} />
+                <Row label="Permanent Address"
+                  value={
+                    s.permanent_address_type === 'same' ? 'Same as unit' :
+                    (s.permanent_address || s.perm_address || '')
+                  } />
+              </div>
+            </div>
+          </Section>
+
+          {/* 3 — Occupancy & Members */}
+          <Section title="Occupancy & Members">
+            <div className="row g-0 mb-2">
+              <div className="col-md-4">
+                <Row label="Occupancy Type"   value={s.occupancy_type} />
+              </div>
+              <div className="col-md-4">
+                <Row label="Total Occupants"  value={s.total_occupants} />
+              </div>
+            </div>
+            {s.occupancy_type !== 'tenant' && members.length > 0 && (
+              <>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#3A5080', marginBottom: 4 }}>
+                  Family Members
+                </div>
+                <div className="table-responsive">
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...th, width: '5%' }}>#</th>
+                        <th style={th}>Name</th>
+                        <th style={th}>Age Range</th>
+                        <th style={th}>Relation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {members.map(m => (
+                        <tr key={m.num}>
+                          <td style={{ ...td, color: '#999' }}>{m.num}</td>
+                          <td style={td}>{m.name || '—'}</td>
+                          <td style={td}>{m.age || '—'}</td>
+                          <td style={td}>{m.relation || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </Section>
+
+          {/* 4 — Tenant Details (only when tenant) */}
+          {s.occupancy_type === 'tenant' && (
+            <Section title="Tenant Details">
+              <div className="row g-0 mb-2">
+                <div className="col-md-6">
+                  <Row label="Tenant Name"          value={s.tenant_name} />
+                  <Row label="Age Range"            value={s.tenant_age} />
+                  <Row label="Contact"              value={s.tenant_contact} />
+                  <Row label="Email"                value={s.tenant_email} />
+                </div>
+                <div className="col-md-6">
+                  <Row label="Agreement Period"     value={s.agreement_period} />
+                  <Row label="Police Verification"  value={s.police_verification} />
+                  <Row label="Agreement Registered" value={s.agreement_registered} />
+                </div>
+              </div>
+              {tenantMembers.length > 0 && (
+                <>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#3A5080', marginBottom: 4 }}>
+                    Tenant Family Members
+                  </div>
+                  <div className="table-responsive">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...th, width: '5%' }}>#</th>
+                          <th style={th}>Name</th><th style={th}>Age</th><th style={th}>Relation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tenantMembers.map(m => (
+                          <tr key={m.num}>
+                            <td style={{ ...td, color: '#999' }}>{m.num}</td>
+                            <td style={td}>{m.name}</td>
+                            <td style={td}>{m.age || '—'}</td>
+                            <td style={td}>{m.relation || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </Section>
+          )}
+
+          {/* 5 — Vehicle Details */}
+          {vehicles.length > 0 && (
+            <Section title="Vehicle Details">
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, width: '5%' }}>#</th>
+                      <th style={th}>Type</th><th style={th}>Make / Model</th>
+                      <th style={th}>Reg No.</th><th style={th}>Colour</th>
+                      <th style={th}>Fuel</th><th style={th}>Park Slot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vehicles.map(v => (
+                      <tr key={v.num}>
+                        <td style={{ ...td, color: '#999' }}>{v.num}</td>
+                        <td style={td}>{v.type || '—'}</td>
+                        <td style={td}>{v.make || '—'}</td>
+                        <td style={td}>
+                          <code style={{ fontSize: '0.8rem', color: '#1B3A6B' }}>
+                            {v.reg || '—'}
+                          </code>
+                        </td>
+                        <td style={td}>{v.colour || '—'}</td>
+                        <td style={td}>{v.fuel || '—'}</td>
+                        <td style={td}>{v.park || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
+
+          {/* 6 — Pet Details */}
+          {pets.length > 0 && (
+            <Section title="Pet Details">
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, width: '5%' }}>#</th>
+                      <th style={th}>Name</th><th style={th}>Breed</th>
+                      <th style={th}>Age</th><th style={th}>Gender</th>
+                      <th style={th}>Vaccinated</th><th style={th}>Last Vacc</th><th style={th}>Next Due</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pets.map(p => (
+                      <tr key={p.num}>
+                        <td style={{ ...td, color: '#999' }}>{p.num}</td>
+                        <td style={td}>{p.name}</td>
+                        <td style={td}>{p.breed || '—'}</td>
+                        <td style={td}>{p.age || '—'}</td>
+                        <td style={td}>{p.gender || '—'}</td>
+                        <td style={td}>{p.vaccinated || '—'}</td>
+                        <td style={td}>{p.vacDate || '—'}</td>
+                        <td style={td}>{p.nextDate || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
+
+          {/* 7 — Association & Documents */}
+          <Section title="Association Membership & Documents">
+            <div className="row g-0">
+              <div className="col-md-6">
+                <Row label="Membership Completed"   value={s.membership_completed} />
+                <Row label="Membership ID"          value={s.membership_id} />
+                <Row label="Maintenance Paid Up To" value={s.maintenance_paid_up_to} />
+              </div>
+              <div className="col-md-6">
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#3A5080', marginBottom: 6 }}>
+                  Documents Enclosed
+                </div>
+                <div style={{ fontSize: '0.875rem', lineHeight: 2 }}>
+                  <span style={{ marginRight: 16 }}>
+                    {docYes('doc:_sale_deed','doc_sale_deed') ? '☑' : '☐'} Sale Deed
+                  </span>
+                  <span style={{ marginRight: 16 }}>
+                    {docYes('doc:_tenant_agreement','doc_tenant_agreement') ? '☑' : '☐'} Tenant Agreement
+                  </span>
+                  <span>
+                    {docYes('doc:_pet_certificate','doc_pet_cert') ? '☑' : '☐'} Pet Certificate
+                  </span>
+                </div>
+                {/* Uploaded file links */}
+                {s.sale_deed_urls && (
+                  <div className="mt-2">
+                    <div style={{ fontSize: '0.72rem', color: '#6c757d', fontWeight: 600, marginBottom: 2 }}>
+                      Sale Deed Files
+                    </div>
+                    {s.sale_deed_urls.split(',').filter(Boolean).map((url, i) => (
+                      <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'block', fontSize: '0.78rem' }}>
+                        📄 View file {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {s.tenant_agreement_urls && (
+                  <div className="mt-1">
+                    <div style={{ fontSize: '0.72rem', color: '#6c757d', fontWeight: 600, marginBottom: 2 }}>
+                      Tenant Agreement Files
+                    </div>
+                    {s.tenant_agreement_urls.split(',').filter(Boolean).map((url, i) => (
+                      <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'block', fontSize: '0.78rem' }}>
+                        📄 View file {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {s.pet_vaccination_urls && (
+                  <div className="mt-1">
+                    <div style={{ fontSize: '0.72rem', color: '#6c757d', fontWeight: 600, marginBottom: 2 }}>
+                      Pet Vaccination Files
+                    </div>
+                    {s.pet_vaccination_urls.split(',').filter(Boolean).map((url, i) => (
+                      <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'block', fontSize: '0.78rem' }}>
+                        📄 View file {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Section>
+
+        </div>
+      </div>
+    </div>
   );
 }

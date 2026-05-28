@@ -105,6 +105,20 @@
 .occTenant { background: #fff3cd; color: #7d5a00; }
 .occVacant { background: #f1f3f5; color: #555;    }
 
+.btnDetails {
+  background: #fff;
+  color: #1B3A6B;
+  border: 1.5px solid #1B3A6B;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btnDetails:hover { background: #1B3A6B; color: #fff; }
+
 .btnEdit {
   background: #1B3A6B;
   color: #fff;
