@@ -856,8 +856,8 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Total No. of Occupants" value={form.total_occupants}
-                    onChange={v => set('total_occupants', v)} type="number" min="0" max="30" />
+                  <FormField label="Total No. of Occupants *" value={form.total_occupants}
+                    onChange={v => set('total_occupants', v)} type="number" min="0" max="30" required />
                 </div>
               </div>
 
