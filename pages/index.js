@@ -31,6 +31,8 @@ const RELATIONS  = [
   'Other',
 ];
 const EMPTY_MEMBER = { name: '', age: '', relation: '' };
+const EMPTY_TENANT_MEMBER = { age: '', relation: '' };
+const TENANT_RELATIONS = ['', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Other'];
 const EMPTY_VEHICLE   = { type: '', make: '', reg: '', colour: '', fuel: '', park: '' };
 const VEHICLE_TYPES   = ['', '2 Wheeler', '4 Wheeler'];
 const EMPTY_PET     = { name: '', breed: '', age: '', gender: '', vaccinated: '', vacc_date: '', next_vacc_date: '', cert_status: '' };
@@ -45,7 +47,8 @@ function initForm() {
     perm_address: '',
     occupancy_type: '', total_occupants: '',
     members: Array(10).fill(null).map(() => ({ ...EMPTY_MEMBER })),
-    tenant_name: '', tenant_contact: '', tenant_email: '',
+    tenant_name: '', tenant_age: '', tenant_contact: '', tenant_email: '',
+    tenant_members: Array(6).fill(null).map(() => ({ ...EMPTY_TENANT_MEMBER })),
     agreement_period: '', police_verification: '', agreement_registered: '',
     vehicles: Array(5).fill(null).map(() => ({ ...EMPTY_VEHICLE })),
     has_pets: '', membership_completed: '', membership_id: '', maintenance_paid_up_to: '',
@@ -169,8 +172,13 @@ export default function Home() {
       total_occupants:        sub.total_occupants                          || '',
       members,
       tenant_name:            sub.tenant_name                              || '',
+      tenant_age:             sub.tenant_age                               || '',
       tenant_contact:         sub.tenant_contact                           || '',
       tenant_email:           sub.tenant_email                             || '',
+      tenant_members:         Array(6).fill(null).map((_, i) => ({
+        age:      sub[`tenant_member_${i + 1}_age`]      || '',
+        relation: sub[`tenant_member_${i + 1}_relation`] || '',
+      })),
       agreement_period:       sub.agreement_period                         || '',
       // Radio buttons saved as lowercase; normalise in case old data used 'Yes'/'No'
       police_verification:    lc(sub.police_verification),
@@ -494,9 +502,14 @@ export default function Home() {
       payload[`pet_${i + 1}_next_vacc_date`]= p.next_vacc_date;
       payload[`pet_${i + 1}_cert_status`]   = p.cert_status;
     });
+    (form.tenant_members || []).forEach((m, i) => {
+      payload[`tenant_member_${i + 1}_age`]      = m.age;
+      payload[`tenant_member_${i + 1}_relation`] = m.relation;
+    });
     delete payload.members;
     delete payload.vehicles;
     delete payload.pets;
+    delete payload.tenant_members;
     // Flatten file URLs to comma-separated strings
     payload.sale_deed_urls = (form.sale_deeds || [])
       .filter(f => f.status === 'done' || f.status === 'saved')
@@ -803,20 +816,28 @@ export default function Home() {
               </div>
             </SectionCard>
 
-            {/* 04 — Tenant Details */}
-            <SectionCard num="04" title="TENANT DETAILS (IF RENTED)">
+            {/* 04 — Tenant Details (only when Tenant Occupied) */}
+            {form.occupancy_type === 'tenant' && (
+            <SectionCard num="04" title="TENANT DETAILS">
               <div className="row g-3">
                 <div className="col-md-4">
-                  <FormField label="Primary Tenant Name" value={form.tenant_name}
-                    onChange={v => set('tenant_name', v)} />
+                  <FormField label="Primary Tenant Name *" value={form.tenant_name}
+                    onChange={v => set('tenant_name', v)} required />
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Tenant Contact No." value={form.tenant_contact}
-                    onChange={v => set('tenant_contact', v)} type="tel" />
+                  <label className={styles.fieldLabel}>Age Range *</label>
+                  <select className="form-select form-select-sm mt-1" value={form.tenant_age}
+                    onChange={e => set('tenant_age', e.target.value)} required>
+                    {AGE_RANGES.map(a => <option key={a} value={a}>{a || 'Select age range'}</option>)}
+                  </select>
                 </div>
                 <div className="col-md-4">
-                  <FormField label="Tenant Email" value={form.tenant_email}
-                    onChange={v => set('tenant_email', v)} type="email" />
+                  <FormField label="Tenant Contact No. *" value={form.tenant_contact}
+                    onChange={v => set('tenant_contact', v)} type="tel" required />
+                </div>
+                <div className="col-md-4">
+                  <FormField label="Tenant Email *" value={form.tenant_email}
+                    onChange={v => set('tenant_email', v)} type="email" required />
                 </div>
                 <div className="col-md-4">
                   <FormField label="Agreement Period (From — To)" value={form.agreement_period}
@@ -907,8 +928,54 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Tenant Family Members */}
+                <div className="col-12 mt-2">
+                  <label className={styles.fieldLabel} style={{ color: '#3A5080', fontWeight: 700 }}>
+                    Tenant Family Members (up to 6)
+                  </label>
+                  <div className="table-responsive mt-2">
+                    <table className="table table-sm mb-0">
+                      <thead>
+                        <tr className={styles.membersThead}>
+                          <th style={{ width: 40 }}>#</th>
+                          <th>Age Range</th>
+                          <th>Relation to Tenant</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {form.tenant_members.map((m, i) => (
+                          <tr key={i}>
+                            <td className="text-muted">{i + 1}</td>
+                            <td>
+                              <select className="form-select form-select-sm"
+                                value={m.age}
+                                onChange={e => {
+                                  const updated = form.tenant_members.map((r, j) => j === i ? { ...r, age: e.target.value } : r);
+                                  set('tenant_members', updated);
+                                }}>
+                                {AGE_RANGES.map(a => <option key={a} value={a}>{a || '—'}</option>)}
+                              </select>
+                            </td>
+                            <td>
+                              <select className="form-select form-select-sm"
+                                value={m.relation}
+                                onChange={e => {
+                                  const updated = form.tenant_members.map((r, j) => j === i ? { ...r, relation: e.target.value } : r);
+                                  set('tenant_members', updated);
+                                }}>
+                                {TENANT_RELATIONS.map(r => <option key={r} value={r}>{r || '—'}</option>)}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             </SectionCard>
+            )}
 
             {/* 05 — Vehicles */}
             <SectionCard num="05" title="VEHICLE DETAILS (UP TO 5)">
