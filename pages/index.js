@@ -127,11 +127,11 @@ export default function Home() {
       breed:         sub[`pet_${i + 1}_breed`]          || '',
       age:           sub[`pet_${i + 1}_age`]            || '',
       gender:        sub[`pet_${i + 1}_gender`]         || '',
-      vaccinated:    sub[`pet_${i + 1}_vaccinated`]     || '',
+      vaccinated:    sub[`pet_${i + 1}_vaccinated`]                    || '',
       // Sheet header "Pet N Last Vacc Date" → key pet_N_last_vacc_date
-      vacc_date:     sub[`pet_${i + 1}_last_vacc_date`] || '',
+      vacc_date:     normalizeDate(sub[`pet_${i + 1}_last_vacc_date`]) || '',
       // Sheet header "Pet N Next Due Date" → key pet_N_next_due_date
-      next_vacc_date:sub[`pet_${i + 1}_next_due_date`]  || '',
+      next_vacc_date:normalizeDate(sub[`pet_${i + 1}_next_due_date`])  || '',
       cert_status:   sub[`pet_${i + 1}_cert_status`]    || '',
     }));
 
@@ -1404,6 +1404,34 @@ function FormField({ label, value, onChange, type = 'text', required, placeholde
 }
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Normalise a date value that may have been auto-converted by Google Sheets.
+// The sheet stores pet vaccination dates as "dd/mm/yyyy" plain text, but Sheets
+// can convert "01/01/2022" into a Date object.  Apps Script then serialises it
+// as "Sat Jan 01 2022 00:00:00 GMT+0530 (India Standard Time)".
+// This function converts that back to the original "dd/mm/yyyy" display string.
+function normalizeDate(val) {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (!str) return '';
+
+  // Already in "d/m/yyyy" or "dd/mm/yyyy" form — return unchanged
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) return str;
+
+  // JS / Apps Script date string — extract [Month] [day] [year] directly
+  // e.g. "Sat Jan 01 2022 00:00:00 GMT+0530 (India Standard Time)"
+  const m = str.match(/\b([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})\b/);
+  if (m) {
+    const monthIdx = MONTH_NAMES.findIndex(n => n.toLowerCase() === m[1].toLowerCase());
+    if (monthIdx >= 0) {
+      const dd = String(m[2]).padStart(2, '0');
+      const mm = String(monthIdx + 1).padStart(2, '0');
+      return `${dd}/${mm}/${m[3]}`;
+    }
+  }
+
+  return str; // unknown format — pass through as-is
+}
 
 // Parse a stored month-year value back to { month, year }.
 //
