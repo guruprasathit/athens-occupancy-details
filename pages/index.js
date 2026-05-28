@@ -58,12 +58,14 @@ function initForm() {
   };
 }
 
-// Derive Block/Tower and Floor from unit number pattern (e.g. "A1201" → block "A", floor "12")
+// Derive Block/Tower and Floor from unit number pattern:
+//   5 chars (e.g. A1201) → block "A", floor "12" (2nd + 3rd char)
+//   4 chars (e.g. E103)  → block "E", floor "1"  (2nd char only)
 function deriveBlockFloor(unit) {
   const u = (unit || '').toUpperCase().trim();
   return {
     block: u.length >= 1 ? u[0] : '',
-    floor: u.length >= 3 ? u.slice(1, 3) : (u.length >= 2 ? u[1] : ''),
+    floor: u.length >= 5 ? u.slice(1, 3) : (u.length >= 2 ? u[1] : ''),
   };
 }
 
