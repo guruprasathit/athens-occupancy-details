@@ -168,7 +168,8 @@ export default function Home() {
       email2:                 sub.secondary_email    || sub.email2         || '',
       // "Permanent Address" → permanent_address; fallback if old sheet used perm_address
       perm_address:           sub.permanent_address || sub.perm_address    || '',
-      perm_address_type:      (sub.permanent_address || sub.perm_address) ? 'different' : 'same',
+      perm_address_type:      sub.permanent_address_type ||
+                              ((sub.permanent_address || sub.perm_address) ? 'different' : 'same'),
       // occupancy_type stored as lowercase ('owner','tenant','vacant') — keep as-is
       occupancy_type:         sub.occupancy_type                           || '',
       total_occupants:        sub.total_occupants                          || '',

@@ -206,17 +206,27 @@ function saveSubmission(d) {
     d.contact2       || '',
     d.whatsapp2      || '',
     d.email2         || '',
-    d.perm_address   || '',
-    d.occupancy_type || '',
-    d.total_occupants|| ''
+    d.perm_address_type || '',
+    d.perm_address      || '',
+    d.occupancy_type    || '',
+    d.total_occupants   || ''
   ].concat(memberFields).concat([
     d.tenant_name          || '',
+    d.tenant_age           || '',
     d.tenant_contact       || '',
     d.tenant_email         || '',
     d.agreement_period     || '',
     d.police_verification  || '',
     d.agreement_registered || ''
-  ]).concat(vehicleFields).concat([
+  ]).concat((function() {
+    var tm = [];
+    for (var i = 1; i <= 6; i++) {
+      tm.push(d['tenant_member_' + i + '_name']     || '');
+      tm.push(d['tenant_member_' + i + '_age']      || '');
+      tm.push(d['tenant_member_' + i + '_relation'] || '');
+    }
+    return tm;
+  })()).concat(vehicleFields).concat([
     d.has_pets || ''
   ]).concat(petFields).concat([
     d.membership_completed    || '',
@@ -431,13 +441,16 @@ function buildSubmissionHeaders() {
     'Unique ID', 'Occupied Since', 'Owner Name',
     'Primary Contact', 'Primary WhatsApp', 'Primary Email',
     'Secondary Contact', 'Secondary WhatsApp', 'Secondary Email',
-    'Permanent Address', 'Occupancy Type', 'Total Occupants'
+    'Permanent Address Type', 'Permanent Address', 'Occupancy Type', 'Total Occupants'
   ];
   for (var i = 1; i <= 10; i++) {
     headers.push('Member ' + i + ' Name', 'Member ' + i + ' Age', 'Member ' + i + ' Relation');
   }
-  headers.push('Tenant Name', 'Tenant Contact', 'Tenant Email',
+  headers.push('Tenant Name', 'Tenant Age', 'Tenant Contact', 'Tenant Email',
                'Agreement Period', 'Police Verification', 'Agreement Registered');
+  for (var tm = 1; tm <= 6; tm++) {
+    headers.push('Tenant Member ' + tm + ' Name', 'Tenant Member ' + tm + ' Age', 'Tenant Member ' + tm + ' Relation');
+  }
   for (var j = 1; j <= 5; j++) {
     headers.push('Vehicle ' + j + ' Type', 'Vehicle ' + j + ' Make', 'Vehicle ' + j + ' Reg',
                  'Vehicle ' + j + ' Colour', 'Vehicle ' + j + ' Fuel', 'Vehicle ' + j + ' Park');
