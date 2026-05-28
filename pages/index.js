@@ -1281,14 +1281,30 @@ function parseMonthYear(val) {
 }
 
 function MonthPickerField({ label, value, onChange, required }) {
-  const { month: selMonth, year: selYear } = parseMonthYear(value);
+  const parsed = parseMonthYear(value);
+  const [selMonth, setSelMonth] = useState(parsed.month);
+  const [selYear, setSelYear]   = useState(parsed.year);
+
+  // Keep dropdowns in sync when parent loads existing data
+  useEffect(() => {
+    const { month, year } = parseMonthYear(value);
+    setSelMonth(month);
+    setSelYear(year);
+  }, [value]);
 
   const currentYear = new Date().getFullYear();
   const years = [];
   for (let y = 1990; y <= currentYear + 2; y++) years.push(y);
 
-  const handleChange = (newMonth, newYear) => {
-    if (newMonth && newYear) onChange(`${newMonth} ${newYear}`);
+  const handleMonthChange = (m) => {
+    setSelMonth(m);
+    if (m && selYear) onChange(`${m} ${selYear}`);
+    else onChange('');
+  };
+
+  const handleYearChange = (y) => {
+    setSelYear(y);
+    if (selMonth && y) onChange(`${selMonth} ${y}`);
     else onChange('');
   };
 
@@ -1299,8 +1315,8 @@ function MonthPickerField({ label, value, onChange, required }) {
         <select
           className="form-select form-select-sm"
           value={selMonth}
-          onChange={e => handleChange(e.target.value, selYear)}
-          required={required && !selYear}
+          onChange={e => handleMonthChange(e.target.value)}
+          required={required}
           style={{ flex: 1 }}
         >
           <option value="">Month</option>
@@ -1309,8 +1325,7 @@ function MonthPickerField({ label, value, onChange, required }) {
         <select
           className="form-select form-select-sm"
           value={selYear}
-          onChange={e => handleChange(selMonth, e.target.value)}
-          required={required && !selMonth}
+          onChange={e => handleYearChange(e.target.value)}
           style={{ flex: 1 }}
         >
           <option value="">Year</option>
