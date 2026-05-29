@@ -135,6 +135,7 @@ export default function Admin() {
 
   // ── Stats ────────────────────────────────────────────────────────
   const countByType = (type) => submissions.filter(s => s.occupancy_type === type).length;
+  const totalMembers = submissions.reduce((sum, s) => sum + (parseInt(s.total_occupants, 10) || 0), 0);
 
   // ── Render: Login ────────────────────────────────────────────────
   if (!token) {
@@ -259,6 +260,10 @@ export default function Admin() {
           <div className={styles.statItem}>
             <div className={styles.statNumber}>{countByType('vacant')}</div>
             <div className={styles.statLabel}>Vacant</div>
+          </div>
+          <div className={styles.statItem}>
+            <div className={styles.statNumber}>{totalMembers}</div>
+            <div className={styles.statLabel}>Total Members</div>
           </div>
           <div className={`${styles.statItem} ms-auto`}>
             <input
