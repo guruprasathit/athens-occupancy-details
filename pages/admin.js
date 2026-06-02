@@ -19,6 +19,7 @@ export default function Admin() {
   const [deleting, setDeleting]         = useState(null);   // unit number currently being deleted
   const [deleteError, setDeleteError]   = useState('');
   const [selectedSub, setSelectedSub]   = useState(null);   // submission open in detail modal
+  const [vehicleSearch, setVehicleSearch] = useState('');   // vehicle reg lookup
 
   // Session is intentionally NOT restored on page load —
   // password is required every time the admin page is visited.
@@ -125,13 +126,46 @@ export default function Admin() {
   const filtered = submissions.filter(s => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
+    const vehicleMatch = Array.from({ length: 5 }, (_, i) => i + 1).some(i =>
+      (s[`vehicle_${i}_reg`]    || '').toLowerCase().includes(q) ||
+      (s[`vehicle_${i}_make`]   || '').toLowerCase().includes(q) ||
+      (s[`vehicle_${i}_type`]   || '').toLowerCase().includes(q) ||
+      (s[`vehicle_${i}_colour`] || '').toLowerCase().includes(q)
+    );
     return (
       (s.unit_number  || '').toLowerCase().includes(q) ||
       (s.owner_name   || '').toLowerCase().includes(q) ||
       (s.block        || '').toLowerCase().includes(q) ||
-      (s.occupancy_type || '').toLowerCase().includes(q)
+      (s.occupancy_type || '').toLowerCase().includes(q) ||
+      vehicleMatch
     );
   });
+
+  // ── Vehicle Lookup ───────────────────────────────────────────────
+  const vehicleResults = vehicleSearch.trim().length < 2 ? [] : (() => {
+    const q = vehicleSearch.trim().toLowerCase();
+    const hits = [];
+    for (const s of submissions) {
+      for (let i = 1; i <= 5; i++) {
+        const reg = (s[`vehicle_${i}_reg`] || '').toLowerCase();
+        if (reg && reg.includes(q)) {
+          hits.push({
+            sub: s,
+            vehicle: {
+              num: i,
+              type:   s[`vehicle_${i}_type`]   || '',
+              make:   s[`vehicle_${i}_make`]   || '',
+              reg:    s[`vehicle_${i}_reg`]    || '',
+              colour: s[`vehicle_${i}_colour`] || '',
+              fuel:   s[`vehicle_${i}_fuel`]   || '',
+              park:   s[`vehicle_${i}_park`]   || '',
+            },
+          });
+        }
+      }
+    }
+    return hits;
+  })();
 
   // ── Stats ────────────────────────────────────────────────────────
   const countByType = (type) => submissions.filter(s => s.occupancy_type === type).length;
@@ -269,12 +303,84 @@ export default function Admin() {
             <input
               type="text"
               className="form-control form-control-sm"
-              placeholder="Search unit, owner, block…"
+              placeholder="Search unit, owner, block, vehicle reg/make…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ minWidth: 220 }}
             />
           </div>
+        </div>
+
+        {/* Vehicle Lookup */}
+        <div style={{ background: '#fff', border: '1.5px solid #dde6f3', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', color: '#1B3A6B', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
+            🚗 Vehicle Lookup
+          </div>
+          <div className="d-flex gap-2 align-items-center mb-2" style={{ maxWidth: 420 }}>
+            <input
+              type="text"
+              className="form-control form-control-sm"
+              placeholder="Enter registration number…"
+              value={vehicleSearch}
+              onChange={e => setVehicleSearch(e.target.value)}
+              style={{ fontFamily: 'monospace', letterSpacing: '0.04em' }}
+            />
+            {vehicleSearch && (
+              <button className="btn btn-sm btn-outline-secondary" onClick={() => setVehicleSearch('')}>✕</button>
+            )}
+          </div>
+          {vehicleSearch.trim().length >= 2 && vehicleResults.length === 0 && (
+            <div style={{ fontSize: '0.85rem', color: '#888', padding: '0.4rem 0' }}>No vehicle found matching "{vehicleSearch}".</div>
+          )}
+          {vehicleResults.length > 0 && (
+            <div className="d-flex flex-column gap-2 mt-2">
+              {vehicleResults.map(({ sub: s, vehicle: v }, idx) => {
+                const occBg    = s.occupancy_type === 'owner'  ? '#d1f5ea'
+                               : s.occupancy_type === 'tenant' ? '#fff3cd' : '#f1f3f5';
+                const occColor = s.occupancy_type === 'owner'  ? '#0a6640'
+                               : s.occupancy_type === 'tenant' ? '#7d5a00' : '#555';
+                return (
+                  <div key={idx} style={{ background: '#f8fafc', border: '1px solid #dde6f3', borderRadius: 10, padding: '0.75rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+                    {/* Vehicle info */}
+                    <div style={{ flex: '1 1 280px' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                        <code style={{ fontSize: '1rem', fontWeight: 700, color: '#1B3A6B', background: '#eef3fb', padding: '2px 10px', borderRadius: 6 }}>{v.reg}</code>
+                        {v.type && <span style={{ fontSize: '0.75rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{v.type}</span>}
+                        {v.fuel && <span style={{ fontSize: '0.75rem', background: '#f0fdf4', color: '#166534', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{v.fuel}</span>}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#374151', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        {v.make   && <span><span style={{ color: '#6b7280' }}>Make:</span> <strong>{v.make}</strong></span>}
+                        {v.colour && <span><span style={{ color: '#6b7280' }}>Colour:</span> <strong>{v.colour}</strong></span>}
+                        {v.park   && <span><span style={{ color: '#6b7280' }}>Park Slot:</span> <strong>{v.park}</strong></span>}
+                      </div>
+                    </div>
+                    {/* Owner / Unit info */}
+                    <div style={{ flex: '1 1 220px', borderLeft: '1.5px solid #dde6f3', paddingLeft: '1rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111' }}>{s.unit_number}</span>
+                        {s.block && <span style={{ fontSize: '0.78rem', color: '#555' }}>Block {s.block}</span>}
+                        {s.floor && <span style={{ fontSize: '0.78rem', color: '#555' }}>Floor {s.floor}</span>}
+                        {s.occupancy_type && (
+                          <span style={{ background: occBg, color: occColor, padding: '1px 8px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}>{s.occupancy_type}</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#374151' }}>
+                        {s.owner_name && <div><span style={{ color: '#6b7280' }}>Owner:</span> <strong>{s.owner_name}</strong></div>}
+                        {(s.contact || s.primary_contact) && <div><span style={{ color: '#6b7280' }}>Contact:</span> {s.contact || s.primary_contact}</div>}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-sm"
+                      style={{ background: '#1B3A6B', color: '#fff', fontWeight: 600, fontSize: '0.78rem', flexShrink: 0 }}
+                      onClick={() => setSelectedSub(s)}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {fetchError && (
